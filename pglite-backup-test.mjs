@@ -7,6 +7,7 @@ import {
   BACKUP_TABLES,
   BACKUP_VERSION,
   exportBackup,
+  findTablesOutsideBackup,
   importBackup,
   parseBackup,
   serializeBackup,
@@ -43,6 +44,25 @@ async function rowCounts(db) {
   return counts;
 }
 
+// Every column of every table, as the export sees them. The timeline alone is
+// too weak an oracle: it reads none of day_settled, estimate_dismissal,
+// category.name, recurrence.label or purchase.description, so a round-trip
+// that mangled any of those would still produce an identical timeline and an
+// identical row count.
+async function tablesOf(db) {
+  const { tables } = await exportBackup(db);
+  return JSON.stringify(tables, (_k, v) => (typeof v === 'bigint' ? v.toString() : v));
+}
+
+// day_settled is what separates "não gastei nada" from "esqueci" (SPEC.md §8)
+// and is invisible to the timeline, so it gets its own check.
+async function pendingDaysOf(db) {
+  const { rows } = await db.query('select pending_days::text as day from pending_days($1::date)', [
+    today,
+  ]);
+  return rows.map((r) => r.day).join(',');
+}
+
 // ---------------------------------------------------------------------
 // The guard that matters most: a table missing from BACKUP_TABLES would be
 // silently dropped by every export, which is worse than having no backup.
@@ -57,12 +77,22 @@ async function rowCounts(db) {
   assert.deepEqual([...BACKUP_TABLES].sort(), inSchema, 'BACKUP_TABLES must cover every base table');
 }
 
-// exportBackup re-checks at runtime, so a schema change ships as a loud
-// failure even if this test file is never run again.
+// The same drift is reported at runtime, so it reaches the user even if this
+// test is never run again — and the export still happens, because a backup
+// missing one new table is worth more than no backup at all.
 {
   const db = await freshDb();
+  assert.deepEqual(await findTablesOutsideBackup(db), []);
+
   await db.exec('create table stray (id uuid primary key)');
-  await assert.rejects(() => exportBackup(db), /stray/);
+  assert.deepEqual(await findTablesOutsideBackup(db), ['stray']);
+
+  const backup = await exportBackup(db);
+  assert.deepEqual(
+    Object.keys(backup.tables).sort(),
+    [...BACKUP_TABLES].sort(),
+    'a stray table must not stop the known ones from being exported',
+  );
 }
 
 // ---------------------------------------------------------------------
@@ -139,10 +169,13 @@ await seeded.exec(`
 
 const seededTimeline = await timelineOf(seeded);
 const seededCounts = await rowCounts(seeded);
+const seededTables = await tablesOf(seeded);
+const seededPending = await pendingDaysOf(seeded);
 
-// Sanity: the fixture actually produces a moving balance, so "identical
-// timeline" below is a real assertion and not two empty lists matching.
+// Sanity: the fixture actually produces a moving balance and some pendências,
+// so the equality assertions below are real and not two empty lists matching.
 assert.ok(seededTimeline.length > 1000, 'fixture should produce a substantial timeline');
+assert.ok(seededPending.length > 0, 'fixture should leave some dias pendentes');
 
 const file = serializeBackup(await exportBackup(seeded));
 assert.equal(typeof file, 'string');
@@ -153,6 +186,8 @@ assert.equal(typeof file, 'string');
 
   assert.deepEqual(await rowCounts(restored), seededCounts);
   assert.equal(await timelineOf(restored), seededTimeline, 'timeline must survive the round-trip');
+  assert.equal(await tablesOf(restored), seededTables, 'every column of every table must survive');
+  assert.equal(await pendingDaysOf(restored), seededPending, 'dias pendentes must survive');
 
   // Spot-check the values the timeline is built from, not just its total.
   const bill = await restored.query(
@@ -221,7 +256,8 @@ assert.equal(typeof file, 'string');
 
   await importBackup(db, parseBackup(file));
   assert.deepEqual(await rowCounts(db), seededCounts);
-  assert.equal(await timelineOf(db), seededTimeline);
+  assert.equal(await tablesOf(db), seededTables);
+  assert.equal(await pendingDaysOf(db), seededPending);
 
   const stale = await db.query(
     "select count(*) as n from transaction where id = '70000000-0000-0000-0000-0000000000aa'",
@@ -234,7 +270,7 @@ assert.equal(typeof file, 'string');
   const db = await freshDb();
   await importBackup(db, parseBackup(file));
   await importBackup(db, parseBackup(file));
-  assert.deepEqual(await rowCounts(db), seededCounts);
+  assert.equal(await tablesOf(db), seededTables);
 }
 
 // importBackup also accepts an exportBackup result directly (bigints and all),
@@ -242,7 +278,7 @@ assert.equal(typeof file, 'string');
 {
   const db = await freshDb();
   await importBackup(db, await exportBackup(seeded));
-  assert.equal(await timelineOf(db), seededTimeline);
+  assert.equal(await tablesOf(db), seededTables);
 }
 
 // ---------------------------------------------------------------------
@@ -257,6 +293,12 @@ assert.equal(typeof file, 'string');
   assert.throws(
     () => parseBackup(JSON.stringify({ format: BACKUP_FORMAT, version: 99, tables: {} })),
     /vers/i,
+  );
+  assert.throws(
+    () => parseBackup(
+      JSON.stringify({ format: BACKUP_FORMAT, version: BACKUP_VERSION, tables: {} }),
+    ),
+    /data de exporta/i,
   );
 
   const missing = JSON.parse(file);

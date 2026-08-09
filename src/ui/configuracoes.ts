@@ -1,7 +1,14 @@
 import { getDb } from '../db';
 import type { Backup } from '../db/backup.mjs';
-import { exportBackup, importBackup, parseBackup, serializeBackup } from '../db/backup.mjs';
+import {
+  exportBackup,
+  findTablesOutsideBackup,
+  importBackup,
+  parseBackup,
+  serializeBackup,
+} from '../db/backup.mjs';
 import { todayBelem } from '../db/queries.mjs';
+import { formatTimestamp } from './format';
 import { renderHoje } from './hoje';
 
 // Tela Configurações, por ora só backup (SPEC.md §5). Manual export and
@@ -42,17 +49,20 @@ export function renderConfiguracoes(app: HTMLDivElement): void {
   exportarBtn.className = 'btn-exportar';
   exportarBtn.textContent = 'Exportar backup';
 
-  // A file input styled as a button: restoring starts by picking a file, and
-  // the browser's own picker is the only way to read one.
-  const restaurarLabel = document.createElement('label');
-  restaurarLabel.className = 'btn-restaurar';
-  restaurarLabel.textContent = 'Restaurar backup';
+  // Restoring starts by picking a file, and the browser's own picker is the
+  // only way to read one. A real button driving a hidden input, rather than a
+  // <label> wrapping it: the input has to be hidden, and a hidden input inside
+  // a label can't be reached by keyboard at all.
+  const restaurarBtn = document.createElement('button');
+  restaurarBtn.type = 'button';
+  restaurarBtn.className = 'btn-restaurar';
+  restaurarBtn.textContent = 'Restaurar backup';
 
   const fileInput = document.createElement('input');
   fileInput.type = 'file';
   fileInput.accept = 'application/json,.json';
   fileInput.className = 'config-file';
-  restaurarLabel.append(fileInput);
+  restaurarBtn.addEventListener('click', () => fileInput.click());
 
   const voltarBtn = document.createElement('button');
   voltarBtn.type = 'button';
@@ -66,9 +76,22 @@ export function renderConfiguracoes(app: HTMLDivElement): void {
     setStatus('Preparando o arquivo…');
     try {
       const db = await getDb();
+      const foraDoBackup = await findTablesOutsideBackup(db);
       const text = serializeBackup(await exportBackup(db));
       download(`termometro-${todayBelem()}.json`, text);
-      setStatus('Backup exportado.');
+
+      // Where the file goes after this is the browser's business, so the
+      // message says what actually happened — the file was generated — rather
+      // than claiming a save this code can't observe.
+      if (foraDoBackup.length > 0) {
+        setStatus(
+          `Arquivo gerado, mas sem estas tabelas: ${foraDoBackup.join(', ')}. ` +
+            'Atualize o app antes de confiar neste backup.',
+          true,
+        );
+      } else {
+        setStatus('Arquivo gerado. Guarde-o fora do aparelho.');
+      }
     } catch (err) {
       setStatus(`Falha ao exportar: ${(err as Error).message}`, true);
     } finally {
@@ -102,7 +125,7 @@ export function renderConfiguracoes(app: HTMLDivElement): void {
     const question = document.createElement('p');
     question.textContent =
       `O arquivo tem ${total} ${total === 1 ? 'registro' : 'registros'}, ` +
-      `de ${formatExportedAt(backup.exported_at)}. Restaurar apaga o que está ` +
+      `de ${formatTimestamp(backup.exported_at)}. Restaurar apaga o que está ` +
       'neste aparelho e coloca o do arquivo no lugar.';
 
     const cancelarBtn = document.createElement('button');
@@ -150,7 +173,8 @@ export function renderConfiguracoes(app: HTMLDivElement): void {
     sectionTitle,
     explanation,
     exportarBtn,
-    restaurarLabel,
+    restaurarBtn,
+    fileInput,
     status,
     confirmacao,
     voltarBtn,
@@ -170,16 +194,4 @@ function download(filename: string, text: string): void {
   link.click();
   link.remove();
   setTimeout(() => URL.revokeObjectURL(url), 0);
-}
-
-// exported_at is an ISO instant, not one of the schema's date strings, so it
-// formats through Date directly.
-function formatExportedAt(isoString: string): string {
-  const date = new Date(isoString);
-  if (Number.isNaN(date.getTime())) return 'data desconhecida';
-  return new Intl.DateTimeFormat('pt-BR', {
-    dateStyle: 'short',
-    timeStyle: 'short',
-    timeZone: 'America/Belem',
-  }).format(date);
 }

@@ -11,6 +11,8 @@ export interface Backup {
   tables: Record<string, Record<string, unknown>[]>;
 }
 
+export function findTablesOutsideBackup(db: PGlite): Promise<string[]>;
+
 export function exportBackup(db: PGlite): Promise<Backup>;
 
 export function serializeBackup(backup: Backup): string;

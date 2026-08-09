@@ -37,10 +37,13 @@ um texto legível.
 **Dump SQL.** Legível, mas exigiria gerar e reaplicar `INSERT`s à mão, com
 escaping próprio, para ganhar o mesmo que o JSON já dá.
 
-**Backup automático (periódico ou ao fechar).** Adiado. Sem servidor, o
-destino continuaria sendo o mesmo aparelho, então automatizar não protege
-contra a falha que motiva o backup. Quando o Electric entrar, o dump periódico
-para o servidor previsto em §5 substitui esta tela como caminho principal.
+**Backup automático (periódico ou ao fechar).** Adiado, mas não porque não
+adiantaria: o arquivo baixado sai do IndexedDB, então automatizar protegeria
+de verdade. O impedimento é outro — o navegador só entrega um arquivo dentro
+de um gesto do usuário, então exportação de fundo não existe num PWA. O que
+sobra é o *lembrete* ("faz um mês desde o último backup"), e o ticket autoriza
+revisitar isso depois. Quando o Electric entrar, o dump periódico para o
+servidor previsto em §5 substitui esta tela como caminho principal.
 
 ## Consequências
 
@@ -49,9 +52,17 @@ para o servidor previsto em §5 substitui esta tela como caminho principal.
   schema é o mesmo dos dois lados (`SPEC.md` §5).
 - `BACKUP_TABLES`, em `src/db/backup.mjs`, tem de acompanhar o `schema.sql`.
   Uma tabela nova esquecida ali sumiria de todo backup em silêncio — o pior
-  defeito possível numa função de backup —, então `exportBackup` compara a
-  lista com o `information_schema` e falha na hora, e o teste faz a mesma
-  comparação.
+  defeito possível numa função de backup. `findTablesOutsideBackup` compara a
+  lista com o `information_schema` e a tela diz o que ficou de fora, mas o
+  arquivo sai assim mesmo: um backup sem uma tabela nova ainda guarda os anos
+  de histórico que motivam a funcionalidade, e recusar deixaria o usuário sem
+  nada. Restaurar não destrói o que está fora da lista — o `truncate` só
+  alcança as tabelas que ela nomeia.
+- O teste compara **todas as colunas de todas as tabelas**, não só a linha do
+  tempo. `timeline()` não lê `day_settled`, `estimate_dismissal`,
+  `category.name`, `recurrence.label` nem `purchase.description`, então um
+  round-trip que corrompesse qualquer um deles ainda mostraria uma linha do
+  tempo idêntica. `pending_days()` entra pelo mesmo motivo (§8).
 - `created_at`/`settled_at`/`dismissed_at` voltam com precisão de
   milissegundo, não de microssegundo. Nenhum cálculo os lê (`timeline`,
   `card_bill`, `pending_days` e as demais olham só `date`), então saldo e

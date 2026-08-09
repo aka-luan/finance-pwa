@@ -29,3 +29,18 @@ export function formatDateHeader(dateStr: string): string {
 
   return `${weekday}, ${dayPart} de ${monthPart}`;
 }
+
+// For an ISO instant — a real point in time, unlike the schema's date columns,
+// so it goes through Date and is shown in America/Belem. Used for the
+// exported_at stamp a backup file carries. Tolerates a malformed string
+// because that value comes from a file the user picked, not from the schema.
+export function formatTimestamp(isoString: string): string {
+  const date = new Date(isoString);
+  if (Number.isNaN(date.getTime())) return 'data desconhecida';
+
+  return new Intl.DateTimeFormat('pt-BR', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+    timeZone: 'America/Belem',
+  }).format(date);
+}

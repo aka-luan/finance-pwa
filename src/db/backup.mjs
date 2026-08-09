@@ -36,8 +36,6 @@ function bigintToString(_key, value) {
 // Reads every table into a plain object. Table names come from the constant
 // above, never from input, so interpolating them into SQL is safe.
 export async function exportBackup(db) {
-  await assertEveryTableIsBackedUp(db);
-
   const tables = {};
   for (const table of BACKUP_TABLES) {
     // order by 1 is the primary key in every one of these tables, which makes
@@ -54,25 +52,24 @@ export async function exportBackup(db) {
   };
 }
 
-// A table added to schema.sql but not to BACKUP_TABLES would be dropped from
-// every export silently — a backup that looks fine and isn't. Checking at
-// export time turns that into a visible failure instead of discovering it
-// during a restore, when the original data is already gone.
-async function assertEveryTableIsBackedUp(db) {
+// A table added to schema.sql but not to BACKUP_TABLES would be absent from
+// every export, and nothing in the file would say so. The caller checks and
+// tells the user which tables were left out.
+//
+// Exporting the rest anyway is deliberate: a backup missing one new table
+// still holds the years of history this feature exists to protect, whereas
+// refusing outright would leave the user with nothing. Restoring is safe
+// either way — it only truncates the tables it knows about, so a table
+// outside the list is never destroyed by a restore.
+export async function findTablesOutsideBackup(db) {
   const { rows } = await db.query(
     `select table_name from information_schema.tables
      where table_schema = 'public' and table_type = 'BASE TABLE'`,
   );
-  const missing = rows
+  return rows
     .map((row) => row.table_name)
-    .filter((name) => !BACKUP_TABLES.includes(name));
-
-  if (missing.length > 0) {
-    throw new Error(
-      `Tabelas fora do backup: ${missing.sort().join(', ')}. ` +
-        'Adicione-as a BACKUP_TABLES em src/db/backup.mjs.',
-    );
-  }
+    .filter((name) => !BACKUP_TABLES.includes(name))
+    .sort();
 }
 
 // Pretty-printed: the point of a text format over a binary datadir dump is
@@ -101,6 +98,10 @@ export function parseBackup(text) {
     throw new Error(
       `Backup na versão ${parsed.version}; este app lê a versão ${BACKUP_VERSION}.`,
     );
+  }
+
+  if (typeof parsed.exported_at !== 'string') {
+    throw new Error('Backup sem data de exportação.');
   }
 
   if (parsed.tables === null || typeof parsed.tables !== 'object') {
