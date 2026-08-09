@@ -86,6 +86,53 @@ export async function pendingDays(db, today) {
   return rows.map((row) => row.day);
 }
 
+// Recorrências (issue #5): entrada ou saída num dia fixo do mês. Só
+// target = 'account' aqui — recorrência no cartão alimenta card_bill e é
+// gerenciada em outro lugar, fora do escopo desta tela.
+export async function listRecurrences(db, today) {
+  const { rows } = await db.query(
+    `select id, kind, amount_cents, day_of_month, label, start_date, end_date,
+            (end_date is null or end_date > $1::date) as active
+     from recurrence
+     where target = 'account'
+     order by day_of_month, label`,
+    [today],
+  );
+  return rows;
+}
+
+export async function createRecurrence(db, { kind, dayOfMonth, amountCents, label, startDate }) {
+  const id = crypto.randomUUID();
+  await db.query(
+    `insert into recurrence (id, kind, target, amount_cents, day_of_month, label, start_date)
+     values ($1, $2, 'account', $3, $4, $5, $6)`,
+    [id, kind, amountCents, dayOfMonth, label, startDate],
+  );
+  return id;
+}
+
+export async function updateRecurrence(db, id, { kind, dayOfMonth, amountCents, label }) {
+  await db.query(
+    `update recurrence set kind = $2, amount_cents = $3, day_of_month = $4, label = $5
+     where id = $1`,
+    [id, kind, amountCents, dayOfMonth, label],
+  );
+}
+
+// Desativar não apaga: a recorrência continua existindo para as exceções já
+// gravadas contra ela (transaction.recurrence_id), só para de projetar a
+// partir de hoje. end_date = today basta para isso (proj_rec exige
+// s.day > p_today e s.day <= end_date, e as duas não podem valer juntas);
+// puxar start_date para trás também garante que uma recorrência que ainda
+// nem começou não deixe escapar sua primeira ocorrência.
+export async function deactivateRecurrence(db, id, today) {
+  await db.query(
+    `update recurrence set start_date = least(start_date, $2::date), end_date = $2::date
+     where id = $1`,
+    [id, today],
+  );
+}
+
 // "Acertar saldo": o usuário digita o saldo real que o banco mostra agora,
 // e a partir daqui o cálculo não olha mais atrás desta data.
 //

@@ -10,6 +10,7 @@ import {
 import { todayBelem } from '../db/queries.mjs';
 import { formatTimestamp } from './format';
 import { renderHoje } from './hoje';
+import { renderRecorrencias } from './recorrencias';
 
 // Tela Configurações, por ora só backup (SPEC.md §5). Manual export and
 // restore, reachable without devtools — see docs/adr/0001-backup-json-manual.md
@@ -21,6 +22,16 @@ export function renderConfiguracoes(app: HTMLDivElement): void {
   const title = document.createElement('h1');
   title.className = 'config-title';
   title.textContent = 'Configurações';
+
+  const recorrenciasTitle = document.createElement('h2');
+  recorrenciasTitle.className = 'config-secao';
+  recorrenciasTitle.textContent = 'Recorrências';
+
+  const recorrenciasBtn = document.createElement('button');
+  recorrenciasBtn.type = 'button';
+  recorrenciasBtn.className = 'btn-bloco';
+  recorrenciasBtn.textContent = 'Gerenciar recorrências';
+  recorrenciasBtn.addEventListener('click', () => renderRecorrencias(app));
 
   const sectionTitle = document.createElement('h2');
   sectionTitle.className = 'config-secao';
@@ -170,6 +181,8 @@ export function renderConfiguracoes(app: HTMLDivElement): void {
 
   app.append(
     title,
+    recorrenciasTitle,
+    recorrenciasBtn,
     sectionTitle,
     explanation,
     exportarBtn,

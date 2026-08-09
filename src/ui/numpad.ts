@@ -9,6 +9,7 @@ export interface AmountField {
   addDigit(digit: string): void;
   backspace(): void;
   clear(): void;
+  setCents(cents: bigint): void;
 }
 
 // Cents-first entry: every digit shifts into cents, so the value is always
@@ -48,6 +49,13 @@ export function createAmountField(label: string): AmountField {
     },
     clear() {
       digits = '';
+      render();
+    },
+    // Prefilling an already-stored value (e.g. opening a form to edit) is not
+    // digit entry, so it bypasses MAX_DIGITS — the cap only exists to keep a
+    // human from fat-fingering a huge amount on the numpad.
+    setCents(cents) {
+      digits = cents <= 0n ? '' : cents.toString();
       render();
     },
   };
