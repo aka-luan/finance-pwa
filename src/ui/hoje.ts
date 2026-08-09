@@ -18,6 +18,7 @@ import { renderConfiguracoes } from './configuracoes';
 import { debounce } from './debounce';
 import { formatCents, formatDateShort, formatMonthName } from './format';
 import { renderLancar } from './lancar';
+import { renderLinhaDoTempo } from './linha-do-tempo';
 import { renderUndoToast, type UndoState } from './undo';
 
 // Tela Hoje (SPEC.md §6): saldo em conta, quanto posso gastar hoje, o
@@ -55,6 +56,15 @@ export function renderHoje(app: HTMLDivElement, undo?: UndoState): void {
   const pendentesEl = document.createElement('div');
   pendentesEl.className = 'pendentes';
 
+  // "Acesso secundário" (SPEC.md §6): a linha do tempo completa, fora da
+  // tela principal — mesmo tratamento discreto do botão de Configurações,
+  // para não competir com saldo/marcos/simulação.
+  const linhaTempoBtn = document.createElement('button');
+  linhaTempoBtn.type = 'button';
+  linhaTempoBtn.className = 'btn-config';
+  linhaTempoBtn.textContent = 'Ver linha do tempo completa';
+  linhaTempoBtn.addEventListener('click', () => renderLinhaDoTempo(app));
+
   // Discreet on purpose: the tela is built around the number at the top, and
   // backup is something the user does occasionally, not daily. Fica depois
   // do aviso de pendentes, que é o que pede ação hoje.
@@ -73,6 +83,7 @@ export function renderHoje(app: HTMLDivElement, undo?: UndoState): void {
     piorEl,
     simularEl.container,
     pendentesEl,
+    linhaTempoBtn,
     configBtn,
   );
 

@@ -608,3 +608,59 @@ body {
   color: var(--fg-muted);
   font-size: 0.85rem;
 }
+
+/* Tela Linha do tempo (issue #9) */
+
+.screen-linha-tempo {
+  gap: 0.5rem;
+  padding-top: 1.5rem;
+}
+
+.linha-tempo-lista {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.linha-tempo-mes {
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  margin: 0.75rem 0 0.25rem;
+  padding: 0.25rem 0;
+  font-size: 0.85rem;
+  color: var(--fg-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.linha-tempo-dias {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.linha-tempo-dia {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.3rem 0;
+  border-bottom: 1px solid rgba(244, 244, 240, 0.08);
+}
+
+.linha-tempo-data {
+  color: var(--fg-muted);
+  font-size: 0.85rem;
+}
+
+.linha-tempo-saldo {
+  font-weight: 600;
+}
+
+/* Dias projetados: mesmo dado, peso visual menor — é estimativa, não o
+   real já lançado (regra "real vence projeção", SPEC.md §4). */
+.linha-tempo-projetado .linha-tempo-saldo {
+  font-weight: 400;
+  color: var(--fg-muted);
+}

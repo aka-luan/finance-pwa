@@ -66,6 +66,19 @@ export async function getWorstPoint(db, today, whatIf = []) {
   return rows[0];
 }
 
+// Linha do tempo completa (issue #9, SPEC.md §6): acesso secundário aos 12
+// meses dia a dia, direto de timeline() — milestones/worst_point já usam
+// timeline_sim para os resumos da Tela Hoje; esta tela mostra a janela
+// inteira, sem simulação.
+export async function getTimeline(db, today) {
+  const { rows } = await db.query(
+    `select day, balance_cents, is_projection
+     from timeline($1::date, ($1::date + interval '12 months')::date, $1::date)`,
+    [today],
+  );
+  return rows;
+}
+
 // One transaction row per item (not a summed total) — §7's list exists so
 // the user can check line-by-line against the fatura, and categoria is per
 // item. Returns the generated ids so a save can be undone.

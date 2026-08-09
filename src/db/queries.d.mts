@@ -30,6 +30,14 @@ export interface WorstPoint {
 
 export function getWorstPoint(db: PGlite, today: string, whatIf?: WhatIfEntry[]): Promise<WorstPoint>;
 
+export interface TimelineDay {
+  day: string;
+  balance_cents: bigint;
+  is_projection: boolean;
+}
+
+export function getTimeline(db: PGlite, today: string): Promise<TimelineDay[]>;
+
 export interface DiarioItem {
   amountCents: bigint;
   categoryId?: string;

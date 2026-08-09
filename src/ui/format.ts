@@ -48,12 +48,18 @@ export function formatDateShort(dateStr: string, options: { withYear?: boolean }
 }
 
 // "julho" — nome do mês por extenso, para o card de desvio da estimativa
-// (SPEC.md §9), que se refere ao mês inteiro, não a um dia específico.
-export function formatMonthName(dateStr: string): string {
+// (SPEC.md §9), que se refere ao mês inteiro, não a um dia específico. Pass
+// withYear for the linha do tempo completa (issue #9), cuja janela de 12
+// meses rotineiramente cruza pra o ano seguinte — "julho de 2027".
+export function formatMonthName(dateStr: string, options: { withYear?: boolean } = {}): string {
   const [year, month, day] = dateStr.split('-').map(Number);
   const date = new Date(Date.UTC(year as number, (month as number) - 1, day));
 
-  return new Intl.DateTimeFormat('pt-BR', { month: 'long', timeZone: 'UTC' }).format(date);
+  return new Intl.DateTimeFormat('pt-BR', {
+    month: 'long',
+    ...(options.withYear ? { year: 'numeric' as const } : {}),
+    timeZone: 'UTC',
+  }).format(date);
 }
 
 // For an ISO instant — a real point in time, unlike the schema's date columns,
