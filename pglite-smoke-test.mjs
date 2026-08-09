@@ -1,10 +1,11 @@
 import { PGlite } from '@electric-sql/pglite';
 import { readFileSync } from 'fs';
+import { pgliteParsers } from './src/db/pglite-config.mjs';
 
-const db = await PGlite.create();
+const db = await PGlite.create({ parsers: pgliteParsers });
 const t0 = Date.now();
-await db.exec(readFileSync('/home/claude/schema.sql','utf8'));
-await db.exec(readFileSync('/home/claude/seed.sql','utf8'));
+await db.exec(readFileSync(new URL('./schema.sql', import.meta.url),'utf8'));
+await db.exec(readFileSync(new URL('./seed.sql', import.meta.url),'utf8'));
 console.log('schema + seed:', Date.now()-t0, 'ms');
 
 const show = async (label, sql) => {

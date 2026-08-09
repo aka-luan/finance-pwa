@@ -1,8 +1,9 @@
 import { PGlite } from '@electric-sql/pglite';
 import { readFileSync } from 'fs';
-const db = await PGlite.create();
-await db.exec(readFileSync('/home/claude/schema.sql','utf8'));
-await db.exec(readFileSync('/home/claude/seed.sql','utf8'));
+import { pgliteParsers } from './src/db/pglite-config.mjs';
+const db = await PGlite.create({ parsers: pgliteParsers });
+await db.exec(readFileSync(new URL('./schema.sql', import.meta.url),'utf8'));
+await db.exec(readFileSync(new URL('./seed.sql', import.meta.url),'utf8'));
 const q = async (l,s)=>{const r=await db.query(s);console.log('\n== '+l);console.table(r.rows);};
 await q('marcos', "select * from milestones('2026-08-08')");
 await q('marcos +1200 hoje', `select * from milestones('2026-08-08','[{"date":"2026-08-08","kind":"saida","amount_cents":120000}]')`);
