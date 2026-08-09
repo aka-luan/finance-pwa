@@ -46,6 +46,20 @@ export function pendingDays(db: PGlite, today: string): Promise<string[]>;
 
 export function setAnchor(db: PGlite, date: string, amountCents: bigint): Promise<void>;
 
+export interface EstimateDeviation {
+  month: string;
+  actual_cents: bigint;
+  estimate_cents: bigint;
+}
+
+export function getEstimateDeviation(db: PGlite, today: string): Promise<EstimateDeviation | null>;
+
+export function updateEstimate(db: PGlite, amountCents: bigint, today: string): Promise<void>;
+
+export function dismissEstimateDeviation(db: PGlite, month: string): Promise<void>;
+
+export function clearEstimateDismissals(db: PGlite): Promise<void>;
+
 export interface Recurrence {
   id: string;
   kind: 'entrada' | 'saida';

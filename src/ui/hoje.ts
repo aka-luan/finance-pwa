@@ -1,18 +1,22 @@
 import type { PGlite } from '@electric-sql/pglite';
 import { getDb } from '../db';
 import {
+  dismissEstimateDeviation,
+  getEstimateDeviation,
   getHoje,
   getMarcos,
   getWorstPoint,
   pendingDays,
   todayBelem,
+  updateEstimate,
+  type EstimateDeviation,
   type Milestone,
   type WorstPoint,
 } from '../db/queries.mjs';
 import { renderAcertarSaldo } from './acertar-saldo';
 import { renderConfiguracoes } from './configuracoes';
 import { debounce } from './debounce';
-import { formatCents, formatDateShort } from './format';
+import { formatCents, formatDateShort, formatMonthName } from './format';
 import { renderLancar } from './lancar';
 import { renderUndoToast, type UndoState } from './undo';
 
@@ -30,6 +34,9 @@ export function renderHoje(app: HTMLDivElement, undo?: UndoState): void {
 
   const saldoEl = document.createElement('p');
   saldoEl.className = 'saldo';
+
+  const estimativaEl = document.createElement('div');
+  estimativaEl.className = 'estimativa-aviso';
 
   const lancarBtn = document.createElement('button');
   lancarBtn.type = 'button';
@@ -60,6 +67,7 @@ export function renderHoje(app: HTMLDivElement, undo?: UndoState): void {
   app.append(
     podeGastarEl,
     saldoEl,
+    estimativaEl,
     lancarBtn,
     marcosEl,
     piorEl,
@@ -72,7 +80,7 @@ export function renderHoje(app: HTMLDivElement, undo?: UndoState): void {
     renderUndoToast(app, undo, () => renderHoje(app));
   }
 
-  void loadHoje(app, podeGastarEl, saldoEl, pendentesEl, marcosEl, piorEl, simularEl);
+  void loadHoje(app, podeGastarEl, saldoEl, estimativaEl, pendentesEl, marcosEl, piorEl, simularEl);
 }
 
 interface SimularField {
@@ -130,6 +138,7 @@ async function loadHoje(
   app: HTMLDivElement,
   podeGastarEl: HTMLElement,
   saldoEl: HTMLElement,
+  estimativaEl: HTMLElement,
   pendentesEl: HTMLElement,
   marcosEl: HTMLElement,
   piorEl: HTMLElement,
@@ -151,12 +160,88 @@ async function loadHoje(
       renderPendentes(app, pendentesEl, pendentes);
     }
 
+    await loadEstimateDeviation(app, db, today, estimativaEl);
     await loadMarcos(db, today, marcosEl, piorEl, simularEl);
   } catch (err) {
     podeGastarEl.textContent = `Falha ao carregar o saldo: ${(err as Error).message}`;
     saldoEl.textContent = '';
     throw err;
   }
+}
+
+// Own try/catch, separate from saldo/quanto-posso-gastar above: a failure
+// here must not overwrite an already-successful saldo with a misleading
+// "falha ao carregar o saldo" (same reasoning as loadMarcos below).
+async function loadEstimateDeviation(
+  app: HTMLDivElement,
+  db: PGlite,
+  today: string,
+  estimativaEl: HTMLElement,
+): Promise<void> {
+  try {
+    const desvio = await getEstimateDeviation(db, today);
+    if (desvio) {
+      renderEstimativaAviso(app, estimativaEl, desvio, today);
+    }
+  } catch (err) {
+    estimativaEl.textContent = `Falha ao carregar o aviso de estimativa: ${(err as Error).message}`;
+  }
+}
+
+// Aviso de desvio da estimativa (issue #8, SPEC.md §9): "Atualizar" adota o
+// gasto real do mês fechado como nova estimativa a partir de hoje, sem
+// retroagir; "Manter" só dispensa o mês. Os dois recarregam a tela — o
+// card não deve reaparecer depois de qualquer uma das duas escolhas.
+function renderEstimativaAviso(
+  app: HTMLDivElement,
+  container: HTMLElement,
+  desvio: EstimateDeviation,
+  today: string,
+): void {
+  container.innerHTML = '';
+
+  const texto = document.createElement('p');
+  texto.textContent =
+    `Em ${formatMonthName(desvio.month)} você gastou ${formatCents(desvio.actual_cents)}/dia, ` +
+    `sua estimativa é ${formatCents(desvio.estimate_cents)}. Atualizar?`;
+
+  const atualizarBtn = document.createElement('button');
+  atualizarBtn.type = 'button';
+  atualizarBtn.className = 'btn-confirmar';
+  atualizarBtn.textContent = 'Atualizar';
+  atualizarBtn.addEventListener('click', () => {
+    void (async () => {
+      atualizarBtn.disabled = true;
+      manterBtn.disabled = true;
+      const db = await getDb();
+      // A nova estimativa vale a partir de hoje, então não muda a comparação
+      // do mês fechado (que olha a estimativa vigente naquele mês) — sem
+      // dispensar aqui, o card reapareceria idêntico na próxima abertura.
+      await updateEstimate(db, desvio.actual_cents, today);
+      await dismissEstimateDeviation(db, desvio.month);
+      renderHoje(app);
+    })();
+  });
+
+  const manterBtn = document.createElement('button');
+  manterBtn.type = 'button';
+  manterBtn.className = 'btn-cancelar';
+  manterBtn.textContent = 'Manter';
+  manterBtn.addEventListener('click', () => {
+    void (async () => {
+      atualizarBtn.disabled = true;
+      manterBtn.disabled = true;
+      const db = await getDb();
+      await dismissEstimateDeviation(db, desvio.month);
+      renderHoje(app);
+    })();
+  });
+
+  const acoes = document.createElement('div');
+  acoes.className = 'config-acoes';
+  acoes.append(manterBtn, atualizarBtn);
+
+  container.append(texto, acoes);
 }
 
 // Own try/catch, separate from saldo/quanto-posso-gastar above: a failure

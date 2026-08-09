@@ -7,7 +7,7 @@ import {
   parseBackup,
   serializeBackup,
 } from '../db/backup.mjs';
-import { todayBelem } from '../db/queries.mjs';
+import { clearEstimateDismissals, todayBelem } from '../db/queries.mjs';
 import { renderCartoes } from './cartoes';
 import { formatTimestamp } from './format';
 import { renderHoje } from './hoje';
@@ -44,6 +44,15 @@ export function renderConfiguracoes(app: HTMLDivElement): void {
   cartoesBtn.textContent = 'Gerenciar cartões';
   cartoesBtn.addEventListener('click', () => renderCartoes(app));
 
+  const estimativaTitle = document.createElement('h2');
+  estimativaTitle.className = 'config-secao';
+  estimativaTitle.textContent = 'Estimativa diária';
+
+  const revisarBtn = document.createElement('button');
+  revisarBtn.type = 'button';
+  revisarBtn.className = 'btn-bloco';
+  revisarBtn.textContent = 'Rever estimativa';
+
   const sectionTitle = document.createElement('h2');
   sectionTitle.className = 'config-secao';
   sectionTitle.textContent = 'Backup';
@@ -65,6 +74,50 @@ export function renderConfiguracoes(app: HTMLDivElement): void {
     status.textContent = message;
     status.classList.toggle('config-status-erro', isError);
   };
+
+  // Apaga as dispensas de todos os meses de uma vez, então pede confirmação
+  // como a restauração de backup abaixo — a mesma lógica de blast radius.
+  revisarBtn.addEventListener('click', () => {
+    confirmacao.innerHTML = '';
+    setStatus('');
+
+    const question = document.createElement('p');
+    question.textContent =
+      'Isso apaga as dispensas de todos os meses e volta pra Hoje, onde a comparação roda de novo.';
+
+    const cancelarBtn = document.createElement('button');
+    cancelarBtn.type = 'button';
+    cancelarBtn.className = 'btn-cancelar';
+    cancelarBtn.textContent = 'Cancelar';
+    cancelarBtn.addEventListener('click', () => {
+      confirmacao.innerHTML = '';
+    });
+
+    const confirmarBtn = document.createElement('button');
+    confirmarBtn.type = 'button';
+    confirmarBtn.className = 'btn-confirmar';
+    confirmarBtn.textContent = 'Rever';
+    confirmarBtn.addEventListener('click', () => {
+      void (async () => {
+        confirmarBtn.disabled = true;
+        cancelarBtn.disabled = true;
+        try {
+          const db = await getDb();
+          await clearEstimateDismissals(db);
+          renderHoje(app);
+        } catch (err) {
+          confirmarBtn.disabled = false;
+          cancelarBtn.disabled = false;
+          setStatus(`Falha ao rever a estimativa: ${(err as Error).message}`, true);
+        }
+      })();
+    });
+
+    const actions = document.createElement('div');
+    actions.className = 'config-acoes';
+    actions.append(cancelarBtn, confirmarBtn);
+    confirmacao.append(question, actions);
+  });
 
   const exportarBtn = document.createElement('button');
   exportarBtn.type = 'button';
@@ -196,6 +249,8 @@ export function renderConfiguracoes(app: HTMLDivElement): void {
     recorrenciasBtn,
     cartoesTitle,
     cartoesBtn,
+    estimativaTitle,
+    revisarBtn,
     sectionTitle,
     explanation,
     exportarBtn,

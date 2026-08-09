@@ -108,6 +108,42 @@ export async function pendingDays(db, today) {
   return rows.map((row) => row.day);
 }
 
+// Aviso de desvio da estimativa (issue #8, SPEC.md §9): compara o último
+// mês fechado com a estimativa vigente naquele mês. null quando não há
+// nada a avisar (sem desvio, sem dado, ou mês já dispensado) — estimate_deviation
+// já filtra tudo isso.
+export async function getEstimateDeviation(db, today) {
+  const { rows } = await db.query('select month, actual_cents, estimate_cents from estimate_deviation($1::date)', [
+    today,
+  ]);
+  return rows[0] ?? null;
+}
+
+// "Atualizar": grava a nova estimativa a partir de hoje, sem retroagir —
+// effective_from é único, então um segundo toque no mesmo dia (ex.: depois
+// de recarregar a tela) substitui o valor em vez de falhar.
+export async function updateEstimate(db, amountCents, today) {
+  await db.query(
+    `insert into daily_estimate (id, amount_cents, effective_from)
+     values ($1, $2, $3::date)
+     on conflict (effective_from) do update set amount_cents = excluded.amount_cents`,
+    [crypto.randomUUID(), amountCents, today],
+  );
+}
+
+// "Manter": dispensa o aviso para aquele mês.
+export async function dismissEstimateDeviation(db, month) {
+  await db.query(
+    'insert into estimate_dismissal (month) values ($1::date) on conflict (month) do nothing',
+    [month],
+  );
+}
+
+// Configurações: limpa todas as dispensas para a comparação rodar de novo.
+export async function clearEstimateDismissals(db) {
+  await db.query('delete from estimate_dismissal');
+}
+
 // Recorrências (issue #5): entrada ou saída num dia fixo do mês. Só
 // target = 'account' aqui — recorrência no cartão alimenta card_bill e é
 // gerenciada em outro lugar, fora do escopo desta tela.

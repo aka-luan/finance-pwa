@@ -351,6 +351,45 @@ returns bigint language sql stable as $$
   select balance_cents from timeline(p_day, p_day, p_today);
 $$;
 
+-- Compara o mês fechado anterior a p_today com a estimativa que estava
+-- vigente no início daquele mês, para o aviso de desvio da Tela Hoje
+-- (SPEC.md §9). Só retorna linha quando há o que avisar: mês com diário
+-- lançado, estimativa para comparar, desvio acima de ~15% e mês ainda não
+-- dispensado em estimate_dismissal — o resto (mostrar o card, escrever a
+-- nova estimativa ou a dispensa) é responsabilidade da UI.
+create or replace function estimate_deviation(p_today date default current_date)
+returns table (month date, actual_cents bigint, estimate_cents bigint)
+language sql stable as $$
+  with last_month as (
+    select date_trunc('month', p_today - interval '1 month')::date as month_start,
+           (date_trunc('month', p_today) - interval '1 day')::date as month_end
+  ),
+  actual as (
+    select lm.month_start,
+           round(sum(t.amount_cents)::numeric
+                 / extract(day from lm.month_end)::int)::bigint as actual_cents
+    from last_month lm
+    join transaction t
+      on t.kind = 'diario' and t.date between lm.month_start and lm.month_end
+    group by lm.month_start, lm.month_end
+  ),
+  estimate as (
+    select lm.month_start, d.amount_cents as estimate_cents
+    from last_month lm
+    cross join lateral (
+      select amount_cents from daily_estimate d
+      where d.effective_from <= lm.month_start
+      order by d.effective_from desc
+      limit 1
+    ) d
+  )
+  select a.month_start as month, a.actual_cents, e.estimate_cents
+  from actual a
+  join estimate e on e.month_start = a.month_start
+  where abs(a.actual_cents - e.estimate_cents)::numeric / nullif(e.estimate_cents, 0) > 0.15
+    and not exists (select 1 from estimate_dismissal ed where ed.month = a.month_start);
+$$;
+
 -- Dias pendentes: do último anchor (ou do primeiro dia com dado) até
 -- ontem, sem transação e sem marca de conferido. O dia do anchor entra na
 -- conta — o anchor afirma o saldo no início dele, não o que se gastou nele.

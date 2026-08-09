@@ -159,6 +159,22 @@ body {
   color: var(--fg);
 }
 
+/* Aviso de desvio da estimativa (SPEC.md §9): mesma linguagem visual do
+   card de confirmação de restauração em Configurações (borda sutil, sem
+   vermelho) — é uma pergunta, não uma cobrança. */
+.estimativa-aviso:not(:empty) {
+  border: 1px solid var(--accent);
+  border-radius: 0.75rem;
+  padding: 1rem;
+  margin-top: 0.75rem;
+}
+
+.estimativa-aviso p {
+  margin: 0 0 0.75rem;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
 .btn-config {
   background: none;
   border: none;
