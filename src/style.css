@@ -34,10 +34,11 @@ body {
 /* Tela Hoje */
 
 .screen-hoje {
-  justify-content: center;
+  justify-content: flex-start;
   align-items: center;
   gap: 1rem;
   text-align: center;
+  padding-top: 2rem;
 }
 
 .pode-gastar {
@@ -61,6 +62,101 @@ body {
   background: var(--accent);
   color: #06251b;
   font-weight: 700;
+}
+
+/* Marcos, pior momento e simulação (SPEC.md §6) */
+
+.marcos,
+.pior-momento {
+  width: 100%;
+  text-align: left;
+}
+
+.marcos-titulo,
+.pior-titulo {
+  font-size: 0.85rem;
+  color: var(--fg-muted);
+  margin: 0 0 0.25rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.marcos-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.marco-item {
+  padding: 0.35rem 0;
+  border-bottom: 1px solid rgba(244, 244, 240, 0.08);
+}
+
+.marco-item:last-child {
+  border-bottom: none;
+}
+
+.marco-topo,
+.marco-sub {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.marco-label {
+  font-size: 0.95rem;
+}
+
+.marco-data {
+  color: var(--fg-muted);
+  font-size: 0.8rem;
+}
+
+.marco-valor,
+.pior-valor {
+  font-weight: 600;
+}
+
+.pior-valor {
+  font-size: 1rem;
+  margin: 0;
+}
+
+/* Simulando: delta mostrado em destaque, sem cor de alarme — a tela não
+   deve parecer estar cobrando o usuário (mesma lógica de .pendentes). */
+.marco-delta,
+.pior-delta {
+  color: var(--accent);
+  font-size: 0.85rem;
+}
+
+.pior-delta {
+  margin: 0.15rem 0 0;
+}
+
+.simular {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+}
+
+.simular-label {
+  font-size: 0.85rem;
+  color: var(--fg-muted);
+}
+
+.simular-input {
+  width: 100%;
+  padding: 0.75rem;
+  font-size: 1.1rem;
+  font-family: inherit;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(244, 244, 240, 0.2);
+  background: rgba(244, 244, 240, 0.05);
+  color: var(--fg);
 }
 
 .btn-config {

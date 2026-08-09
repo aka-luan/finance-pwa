@@ -9,6 +9,27 @@ export interface Hoje {
 
 export function getHoje(db: PGlite, today: string): Promise<Hoje>;
 
+export interface WhatIfEntry {
+  date: string;
+  kind: 'entrada' | 'saida';
+  amount_cents: number;
+}
+
+export interface Milestone {
+  label: string;
+  day: string;
+  balance_cents: bigint;
+}
+
+export function getMarcos(db: PGlite, today: string, whatIf?: WhatIfEntry[]): Promise<Milestone[]>;
+
+export interface WorstPoint {
+  day: string;
+  balance_cents: bigint;
+}
+
+export function getWorstPoint(db: PGlite, today: string, whatIf?: WhatIfEntry[]): Promise<WorstPoint>;
+
 export interface DiarioItem {
   amountCents: bigint;
   categoryId?: string;

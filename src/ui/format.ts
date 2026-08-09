@@ -30,6 +30,23 @@ export function formatDateHeader(dateStr: string): string {
   return `${weekday}, ${dayPart} de ${monthPart}`;
 }
 
+// "5 de ago" — compact form for marcos rows, where the label ("3 meses")
+// already disambiguates the year and four dates sit side by side, so the
+// full weekday from formatDateHeader would wrap. Pass withYear for pior
+// momento, which has no label and whose 12-month window routinely crosses
+// into the next year ("5 de ago de 2027").
+export function formatDateShort(dateStr: string, options: { withYear?: boolean } = {}): string {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const date = new Date(Date.UTC(year as number, (month as number) - 1, day));
+
+  return new Intl.DateTimeFormat('pt-BR', {
+    day: 'numeric',
+    month: 'short',
+    ...(options.withYear ? { year: 'numeric' as const } : {}),
+    timeZone: 'UTC',
+  }).format(date);
+}
+
 // For an ISO instant — a real point in time, unlike the schema's date columns,
 // so it goes through Date and is shown in America/Belem. Used for the
 // exported_at stamp a backup file carries. Tolerates a malformed string

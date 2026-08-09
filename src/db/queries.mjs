@@ -44,6 +44,28 @@ export async function getHoje(db, today) {
   return { saldoCents, podeGastarCents };
 }
 
+// Marcos da Tela Hoje (SPEC.md §6): saldo projetado em fim do mês, +3, +6
+// e +12 meses. what_if espelha o parâmetro jsonb de timeline_sim — o mesmo
+// array alimenta getMarcos e getWorstPoint a partir do campo "e se eu
+// gastar ___", sem gravar nada.
+export async function getMarcos(db, today, whatIf = []) {
+  const { rows } = await db.query('select label, day, balance_cents from milestones($1::date, $2::jsonb)', [
+    today,
+    JSON.stringify(whatIf),
+  ]);
+  return rows;
+}
+
+// Pior momento da janela de 12 meses (SPEC.md §6): menor saldo e o dia em
+// que ocorre.
+export async function getWorstPoint(db, today, whatIf = []) {
+  const { rows } = await db.query('select day, balance_cents from worst_point($1::date, $2::jsonb)', [
+    today,
+    JSON.stringify(whatIf),
+  ]);
+  return rows[0];
+}
+
 // One transaction row per item (not a summed total) — §7's list exists so
 // the user can check line-by-line against the fatura, and categoria is per
 // item. Returns the generated ids so a save can be undone.
