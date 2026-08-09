@@ -2,50 +2,70 @@ import { getDb } from '../db';
 import { insertDiario, settleDay, todayBelem } from '../db/queries.mjs';
 import { formatCents, formatDateHeader } from './format';
 import { renderHoje } from './hoje';
+import { createAmountField, createNumpad } from './numpad';
+import { renderUndoToast, type UndoState } from './undo';
 
 interface Item {
   key: string;
   amountCents: bigint;
 }
 
-const MAX_DIGITS = 8; // up to R$ 999.999,99 — plenty for one Diário item
+// Modo de recuperação (SPEC.md §8): a lista de pendentes é a fotografia
+// tirada quando o usuário entrou, não uma consulta a cada dia. É o que
+// mantém o "2 de 4" estável enquanto os dias vão sendo lançados.
+export interface Recovery {
+  days: string[];
+  index: number;
+}
 
-// Tela Lançar (SPEC.md §7), Diário only — Cartão mode, recorrências and
-// dias-pendentes navigation are later tickets. Cents-first entry: every
-// digit shifts into cents, so the value is always an integer and never
-// needs a decimal-point parse step (resolves §11's open comma question).
-export function renderLancar(app: HTMLDivElement): void {
+export interface LancarOptions {
+  recovery?: Recovery;
+  undo?: UndoState;
+}
+
+// Tela Lançar (SPEC.md §7), Diário only — Cartão mode e recorrências são
+// tickets posteriores.
+export function renderLancar(app: HTMLDivElement, options: LancarOptions = {}): void {
+  const { recovery, undo } = options;
+
+  // Fim da fila (ou fotografia vazia): volta a Hoje com o saldo atualizado
+  // em vez de mostrar "1 de 0".
+  const date = recovery ? recovery.days[recovery.index] : todayBelem();
+  if (date === undefined) {
+    renderHoje(app, undo);
+    return;
+  }
+
   app.innerHTML = '';
   app.className = 'screen screen-lancar';
 
-  const date = todayBelem();
   const items: Item[] = [];
-  let digits = '';
+
+  // Data grande e explícita mesmo em recuperação: a posição diz onde o
+  // usuário está na fila, mas o risco de erro da tela é justamente perder
+  // de vista qual dia se está lançando (SPEC.md §7).
+  const header = document.createElement('div');
+  header.className = 'lancar-header';
+
+  if (recovery) {
+    const posicaoEl = document.createElement('p');
+    posicaoEl.className = 'lancar-posicao';
+    posicaoEl.textContent = `${recovery.index + 1} de ${recovery.days.length}`;
+    header.append(posicaoEl);
+  }
 
   const dateEl = document.createElement('h1');
   dateEl.className = 'lancar-date';
   dateEl.textContent = formatDateHeader(date);
+  header.append(dateEl);
 
-  // readonly suppresses iOS's native keyboard while still allowing focus,
-  // so "focused on open" and "no native keyboard" aren't in tension.
-  const valueInput = document.createElement('input');
-  valueInput.type = 'text';
-  valueInput.readOnly = true;
-  valueInput.inputMode = 'none';
-  valueInput.className = 'valor-input';
-  valueInput.setAttribute('aria-label', 'Valor');
+  const amount = createAmountField('Valor');
 
   const list = document.createElement('ul');
   list.className = 'lancar-lista';
 
   const totalEl = document.createElement('p');
   totalEl.className = 'lancar-total';
-
-  const currentDigitsCents = (): bigint => (digits === '' ? 0n : BigInt(digits));
-
-  const renderValue = (): void => {
-    valueInput.value = formatCents(currentDigitsCents());
-  };
 
   const renderTotal = (): void => {
     const total = items.reduce((sum, item) => sum + item.amountCents, 0n);
@@ -69,7 +89,6 @@ export function renderLancar(app: HTMLDivElement): void {
         const idx = items.findIndex((i) => i.key === item.key);
         if (idx !== -1) items.splice(idx, 1);
         renderList();
-        renderTotal();
       });
 
       li.append(amountSpan, removeBtn);
@@ -78,44 +97,22 @@ export function renderLancar(app: HTMLDivElement): void {
     renderTotal();
   };
 
-  const addDigit = (d: string): void => {
-    if (digits.length >= MAX_DIGITS) return;
-    digits += d;
-    renderValue();
-  };
-
-  const backspace = (): void => {
-    digits = digits.slice(0, -1);
-    renderValue();
-  };
-
   const commitItem = (): void => {
-    const amount = currentDigitsCents();
-    if (amount <= 0n) return;
-    items.push({ key: crypto.randomUUID(), amountCents: amount });
-    digits = '';
-    renderValue();
+    const amountCents = amount.cents();
+    if (amountCents <= 0n) return;
+    items.push({ key: crypto.randomUUID(), amountCents });
+    amount.clear();
     renderList();
   };
 
-  const numpad = document.createElement('div');
-  numpad.className = 'numpad';
-  const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '⌫', '0', '+'];
-  for (const key of keys) {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = key === '+' ? 'numpad-key numpad-add' : 'numpad-key';
-    btn.textContent = key;
-    btn.addEventListener('click', () => {
-      if (key === '⌫') backspace();
-      else if (key === '+') commitItem();
-      else addDigit(key);
-    });
-    numpad.append(btn);
-  }
+  const numpad = createNumpad({
+    onDigit: (digit) => amount.addDigit(digit),
+    onBackspace: () => amount.backspace(),
+    onAdd: commitItem,
+  });
 
   const footer = document.createElement('div');
-  footer.className = 'lancar-footer';
+  footer.className = 'tela-footer';
 
   const salvarBtn = document.createElement('button');
   salvarBtn.type = 'button';
@@ -124,11 +121,24 @@ export function renderLancar(app: HTMLDivElement): void {
 
   const naoGasteiBtn = document.createElement('button');
   naoGasteiBtn.type = 'button';
-  naoGasteiBtn.className = 'btn-nao-gastei';
+  naoGasteiBtn.className = 'btn-secundario';
   naoGasteiBtn.textContent = 'Não gastei nada';
 
   const errorEl = document.createElement('p');
   errorEl.className = 'lancar-erro';
+
+  // "Ambos avançam direto para o próximo dia pendente sem voltar à tela
+  // inicial; quando acabam, retorna a Hoje com o saldo atualizado" (§7).
+  const avancar = (saved?: UndoState): void => {
+    if (recovery) {
+      renderLancar(app, {
+        recovery: { days: recovery.days, index: recovery.index + 1 },
+        undo: saved,
+      });
+    } else {
+      renderHoje(app, saved);
+    }
+  };
 
   const salvar = async (): Promise<void> => {
     // A value typed but not yet added with "+" is still meant to be saved.
@@ -145,7 +155,7 @@ export function renderLancar(app: HTMLDivElement): void {
         date,
         items.map((item) => ({ amountCents: item.amountCents })),
       );
-      renderHoje(app, { ids, expiresAt: Date.now() + 5000 });
+      avancar({ ids, expiresAt: Date.now() + 5000 });
     } catch (err) {
       salvarBtn.disabled = false;
       naoGasteiBtn.disabled = false;
@@ -160,7 +170,7 @@ export function renderLancar(app: HTMLDivElement): void {
     try {
       const db = await getDb();
       await settleDay(db, date);
-      renderHoje(app);
+      avancar();
     } catch (err) {
       salvarBtn.disabled = false;
       naoGasteiBtn.disabled = false;
@@ -173,8 +183,15 @@ export function renderLancar(app: HTMLDivElement): void {
 
   footer.append(naoGasteiBtn, salvarBtn);
 
-  app.append(dateEl, valueInput, list, totalEl, numpad, errorEl, footer);
-  renderValue();
+  app.append(header, amount.input, list, totalEl, numpad, errorEl, footer);
   renderTotal();
-  valueInput.focus();
+  amount.input.focus();
+
+  // Desfazer o dia anterior da fila: apagar os lançamentos deixa aquele
+  // dia pendente de novo, então a tela volta para ele.
+  if (undo) {
+    renderUndoToast(app, undo, () =>
+      renderLancar(app, recovery ? { recovery: { days: recovery.days, index: recovery.index - 1 } } : {}),
+    );
+  }
 }

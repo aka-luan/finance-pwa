@@ -1,31 +1,18 @@
 -- =====================================================================
 -- Termômetro — schema
 -- Postgres 16 / PGlite. Valores em centavos (bigint). Datas sem hora.
+--
+-- Duas metades, separadas pelo marcador lá embaixo: primeiro tipos,
+-- tabelas e índices, que só rodam num banco novo; depois funções e views,
+-- todas `create or replace`. O banco do PWA vive no IndexedDB e não roda
+-- schema.sql de novo depois do primeiro boot, então a segunda metade é
+-- reaplicada toda vez (src/db/schema.mjs) e uma correção de cálculo
+-- alcança quem já tem dados. Só cálculo se propaga assim — mexer em
+-- coluna vai precisar de migração de verdade.
 -- =====================================================================
 
 create type tx_kind as enum ('entrada', 'saida', 'diario');
 create type rec_target as enum ('account', 'card');
-
--- ---------------------------------------------------------------------
--- Helpers
--- ---------------------------------------------------------------------
-
--- Dia N do mês de M, limitado ao último dia do mês.
--- clamp_day('2026-02-01', 31) -> 2026-02-28
-create function clamp_day(month_start date, day int)
-returns date language sql immutable as $$
-  select month_start
-       + (least(day, extract(day from (month_start + interval '1 month - 1 day'))::int) - 1);
-$$;
-
--- Ciclo de fatura em que uma compra cai.
--- Compra até o fechamento entra no ciclo do próprio mês; depois, no seguinte.
-create function bill_cycle(purchase_date date, closing_day int)
-returns date language sql immutable as $$
-  select date_trunc('month', purchase_date)::date
-       + (case when extract(day from purchase_date)::int <= closing_day
-               then 0 else 1 end * interval '1 month');
-$$;
 
 -- ---------------------------------------------------------------------
 -- Tabelas
@@ -44,7 +31,8 @@ create table card (
   archived_at  date
 );
 
--- Saldo conhecido numa data. Ponto de partida do cálculo.
+-- Saldo conhecido no *início* de uma data. Ponto de partida do cálculo:
+-- o que for lançado nesse mesmo dia ainda conta por cima dele.
 create table account_anchor (
   id            uuid primary key,
   date          date   not null unique,
@@ -132,12 +120,42 @@ create table estimate_dismissal (
   dismissed_at  timestamptz not null default now()
 );
 
+-- Marca um dia como conferido. Sem linha aqui, o dia é "pendente" —
+-- é o que distingue "não gastei nada" de "esqueci de lançar".
+create table day_settled (
+  day          date primary key,
+  settled_at   timestamptz not null default now()
+);
+
+-- >>> funções e views: reaplicadas a cada boot >>>
+
+-- ---------------------------------------------------------------------
+-- Helpers
+-- ---------------------------------------------------------------------
+
+-- Dia N do mês de M, limitado ao último dia do mês.
+-- clamp_day('2026-02-01', 31) -> 2026-02-28
+create or replace function clamp_day(month_start date, day int)
+returns date language sql immutable as $$
+  select month_start
+       + (least(day, extract(day from (month_start + interval '1 month - 1 day'))::int) - 1);
+$$;
+
+-- Ciclo de fatura em que uma compra cai.
+-- Compra até o fechamento entra no ciclo do próprio mês; depois, no seguinte.
+create or replace function bill_cycle(purchase_date date, closing_day int)
+returns date language sql immutable as $$
+  select date_trunc('month', purchase_date)::date
+       + (case when extract(day from purchase_date)::int <= closing_day
+               then 0 else 1 end * interval '1 month');
+$$;
+
 -- ---------------------------------------------------------------------
 -- Views derivadas
 -- ---------------------------------------------------------------------
 
 -- Parcelas expandidas. O resto da divisão vai na primeira.
-create view installment as
+create or replace view installment as
 select
   p.id            as purchase_id,
   p.card_id,
@@ -153,7 +171,7 @@ join card c on c.id = p.card_id
 cross join lateral generate_series(1, p.installments) as n;
 
 -- Fatura por cartão e ciclo: parcelas + recorrências no cartão.
-create view card_bill as
+create or replace view card_bill as
 with parts as (
   select card_id, cycle_month, amount_cents from installment
   union all
@@ -183,7 +201,7 @@ group by p.card_id, p.cycle_month, c.due_day, c.closing_day;
 -- ---------------------------------------------------------------------
 -- Retorna um registro por dia entre p_from e p_to, com o saldo acumulado.
 -- Dias <= p_today usam apenas o real. Dias > p_today somam as projeções.
-create function timeline(p_from date, p_to date, p_today date default current_date)
+create or replace function timeline(p_from date, p_to date, p_today date default current_date)
 returns table (
   day             date,
   real_cents      bigint,
@@ -199,9 +217,12 @@ with anchor as (
   order by date desc
   limit 1
 ),
+-- começa no dia do anchor, não depois dele: o anchor é o saldo no início
+-- daquele dia, então o que foi lançado nele ainda conta. O span pode
+-- começar antes de p_from — é assim que o acumulado chega até lá.
 span as (
   select generate_series(
-           coalesce((select date + 1 from anchor), p_from),
+           coalesce((select date from anchor), p_from),
            p_to, interval '1 day')::date as day
 ),
 -- movimento real: entrada positiva, saída e diário negativos
@@ -265,44 +286,39 @@ merged as (
   left join proj_rec  pr on pr.day = s.day
   left join proj_bill pb on pb.day = s.day
   left join proj_daily pd on pd.day = s.day
+),
+-- o acumulado tem que rodar sobre o span inteiro: filtrar por p_from aqui
+-- dentro deixaria de fora tudo que se moveu entre o anchor e p_from.
+running as (
+  select m.day,
+         m.real_cents,
+         m.projected_cents,
+         coalesce((select amount_cents from anchor), 0)
+           + sum(m.real_cents + m.projected_cents) over (order by m.day)
+           as balance_cents,
+         m.day > p_today as is_projection
+  from merged m
 )
-select
-  m.day,
-  m.real_cents,
-  m.projected_cents,
-  coalesce((select amount_cents from anchor), 0)
-    + sum(m.real_cents + m.projected_cents) over (order by m.day)
-    as balance_cents,
-  m.day > p_today as is_projection
-from merged m
-where m.day >= p_from
-order by m.day;
+select r.day, r.real_cents, r.projected_cents, r.balance_cents, r.is_projection
+from running r
+where r.day >= p_from
+order by r.day;
 $$;
 
 -- Saldo de um dia só.
-create function balance_on(p_day date, p_today date default current_date)
+create or replace function balance_on(p_day date, p_today date default current_date)
 returns bigint language sql stable as $$
   select balance_cents from timeline(p_day, p_day, p_today);
 $$;
 
--- =====================================================================
--- Dias conferidos e simulação
--- =====================================================================
-
--- Marca um dia como conferido. Sem linha aqui, o dia é "pendente" —
--- é o que distingue "não gastei nada" de "esqueci de lançar".
-create table day_settled (
-  day          date primary key,
-  settled_at   timestamptz not null default now()
-);
-
 -- Dias pendentes: do último anchor (ou do primeiro dia com dado) até
--- ontem, sem transação e sem marca de conferido.
-create function pending_days(p_today date default current_date)
+-- ontem, sem transação e sem marca de conferido. O dia do anchor entra na
+-- conta — o anchor afirma o saldo no início dele, não o que se gastou nele.
+create or replace function pending_days(p_today date default current_date)
 returns setof date language sql stable as $$
   with base as (
     select coalesce(
-             (select max(date) + 1 from account_anchor where date < p_today),
+             (select max(date) from account_anchor where date <= p_today),
              (select min(date) from transaction),
              p_today
            ) as from_day
@@ -318,7 +334,7 @@ $$;
 -- Simulação: lançamentos hipotéticos, nunca gravados.
 -- Passe um jsonb: '[{"date":"2026-08-08","kind":"saida","amount_cents":120000}]'
 -- ---------------------------------------------------------------------
-create function timeline_sim(
+create or replace function timeline_sim(
   p_from   date,
   p_to     date,
   p_today  date   default current_date,
@@ -356,8 +372,8 @@ order by b.day;
 $$;
 
 -- Marcos da tela inicial: fim do mês, +3, +6, +12 meses.
-create function milestones(p_today date default current_date,
-                           p_what_if jsonb default '[]'::jsonb)
+create or replace function milestones(p_today date default current_date,
+                                      p_what_if jsonb default '[]'::jsonb)
 returns table (label text, day date, balance_cents bigint)
 language sql stable as $$
   with pts as (
@@ -377,8 +393,8 @@ language sql stable as $$
 $$;
 
 -- Pior momento da janela: menor saldo e quando.
-create function worst_point(p_today date default current_date,
-                            p_what_if jsonb default '[]'::jsonb)
+create or replace function worst_point(p_today date default current_date,
+                                       p_what_if jsonb default '[]'::jsonb)
 returns table (day date, balance_cents bigint)
 language sql stable as $$
   select day, balance_cents

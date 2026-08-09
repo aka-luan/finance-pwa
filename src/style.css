@@ -72,6 +72,29 @@ body {
   padding: 0.5rem;
 }
 
+/* Aviso de dias pendentes: discreto de propósito. Nada de vermelho, nada
+   de contador de ofensiva — cobrança faz o usuário parar de abrir o app
+   (SPEC.md §6). */
+
+.pendentes {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 1.5rem;
+}
+
+.pendentes-aviso,
+.pendentes-acertar {
+  background: none;
+  border: none;
+  color: var(--fg-muted);
+  font-size: 0.95rem;
+  padding: 0.5rem 0.75rem;
+  text-decoration: underline;
+  text-underline-offset: 0.3em;
+}
+
 .toast {
   position: fixed;
   bottom: 1.5rem;
@@ -97,19 +120,38 @@ body {
 
 /* Tela Lançar */
 
-/* Configurações reuses Lançar's layout and its primary/secondary buttons —
-   they're the same two controls, so they're defined once here. */
+/* Configurações e Acertar saldo reusam o layout de Lançar e os mesmos
+   botões primário/secundário — são os mesmos dois controles, definidos
+   uma vez só aqui. */
 .screen-lancar,
-.screen-config {
+.screen-config,
+.screen-acertar {
   gap: 0.75rem;
   padding-top: 1.5rem;
+}
+
+.lancar-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.lancar-posicao {
+  font-size: 0.9rem;
+  color: var(--fg-muted);
+  margin: 0;
 }
 
 .lancar-date {
   font-size: 1.1rem;
   font-weight: 600;
   margin: 0;
-  text-transform: capitalize;
+}
+
+/* Só a inicial: `text-transform: capitalize` pega palavra por palavra e
+   vira "Quarta, 5 De Agosto" — mês em português é minúsculo. */
+.lancar-date::first-letter {
+  text-transform: uppercase;
 }
 
 .valor-input {
@@ -182,13 +224,30 @@ body {
   min-height: 1.2em;
 }
 
-.lancar-footer {
+/* Tela Acertar saldo */
+
+.acertar-titulo {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.acertar-hint,
+.acertar-nota {
+  color: var(--fg-muted);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+/* Rodapé de ação, comum a Lançar e Acertar saldo */
+
+.tela-footer {
   display: flex;
   gap: 0.5rem;
   padding: 0.75rem 0 0.5rem;
 }
 
-.lancar-footer button,
+.tela-footer button,
 .config-acoes button {
   flex: 1;
   padding: 1rem;
@@ -198,7 +257,7 @@ body {
   font-weight: 700;
 }
 
-.btn-nao-gastei,
+.btn-secundario,
 .btn-cancelar {
   background: rgba(244, 244, 240, 0.08);
   color: var(--fg);
@@ -210,7 +269,7 @@ body {
   color: #06251b;
 }
 
-.lancar-footer button:disabled,
+.tela-footer button:disabled,
 .config-acoes button:disabled {
   opacity: 0.6;
 }

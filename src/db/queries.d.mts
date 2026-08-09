@@ -20,3 +20,7 @@ export function insertDiario(db: PGlite, date: string, items: DiarioItem[]): Pro
 export function deleteTransactions(db: PGlite, ids: string[]): Promise<void>;
 
 export function settleDay(db: PGlite, date: string): Promise<void>;
+
+export function pendingDays(db: PGlite, today: string): Promise<string[]>;
+
+export function setAnchor(db: PGlite, date: string, amountCents: bigint): Promise<void>;

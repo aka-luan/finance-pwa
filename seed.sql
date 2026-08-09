@@ -3,7 +3,7 @@ insert into card values ('11111111-1111-1111-1111-111111111111','Geral',20,5,nul
 -- Cartão 2 (assinaturas): fecha dia 10, vence dia 25 (mesmo mês)
 insert into card values ('22222222-2222-2222-2222-222222222222','Assinaturas',10,25,null);
 
--- Saldo conhecido no fim de 31/07/2026
+-- Saldo conhecido no início de 31/07/2026
 insert into account_anchor values ('aaaaaaaa-0000-0000-0000-000000000001','2026-07-31', 100000);
 
 -- Salário dia 15, financiamento dia 10

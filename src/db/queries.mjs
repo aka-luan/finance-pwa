@@ -77,3 +77,30 @@ export async function settleDay(db, date) {
     [date],
   );
 }
+
+// Dias sem lançamento e sem marca de conferido, do mais antigo para o mais
+// recente (SPEC.md §8). O usuário retoma do primeiro da lista, não da data
+// atual — hoje nunca aparece aqui.
+export async function pendingDays(db, today) {
+  const { rows } = await db.query('select d as day from pending_days($1::date) d', [today]);
+  return rows.map((row) => row.day);
+}
+
+// "Acertar saldo": o usuário digita o saldo real que o banco mostra agora,
+// e a partir daqui o cálculo não olha mais atrás desta data.
+//
+// account_anchor guarda o saldo no *início* do dia, para que o que for
+// lançado nesse mesmo dia continue contando (um lançamento que some do
+// saldo é o único erro que o app não teria como mostrar). O valor digitado
+// é o de agora e já inclui o que foi lançado hoje, então o que se grava é
+// ele menos o movimento do dia.
+export async function setAnchor(db, date, amountCents) {
+  await db.query(
+    `insert into account_anchor (id, date, amount_cents)
+     select $1::uuid, $2::date, $3::bigint - coalesce((
+              select sum(case when kind = 'entrada' then amount_cents else -amount_cents end)
+              from transaction where date = $2::date), 0)
+     on conflict (date) do update set amount_cents = excluded.amount_cents`,
+    [crypto.randomUUID(), date, amountCents],
+  );
+}
