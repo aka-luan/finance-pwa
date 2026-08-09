@@ -11,6 +11,13 @@
   box-sizing: border-box;
 }
 
+/* Fast repeated taps on the numpad otherwise register as Safari's
+   double-tap-to-zoom gesture. This disables that gesture on buttons only —
+   pinch-zoom and scrolling elsewhere are untouched. */
+button {
+  touch-action: manipulation;
+}
+
 body {
   margin: 0;
   background: var(--bg);
