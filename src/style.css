@@ -327,6 +327,14 @@ body {
   gap: 0.75rem;
 }
 
+/* display: flex above beats the browser's own `[hidden] { display: none }`
+   rule — author styles always win over user-agent ones, regardless of
+   specificity — so the inactive Tipo section stayed visible without this. */
+.lancar-diario[hidden],
+.lancar-cartao[hidden] {
+  display: none;
+}
+
 .cartao-select {
   width: 100%;
   padding: 0.75rem;
