@@ -1,5 +1,6 @@
 import { getDb } from '../db';
 import { deleteTransactions, getHoje, todayBelem } from '../db/queries.mjs';
+import { renderConfiguracoes } from './configuracoes';
 import { formatCents } from './format';
 import { renderLancar } from './lancar';
 
@@ -27,7 +28,15 @@ export function renderHoje(app: HTMLDivElement, undo?: UndoState): void {
   lancarBtn.textContent = 'Lançar';
   lancarBtn.addEventListener('click', () => renderLancar(app));
 
-  app.append(podeGastarEl, saldoEl, lancarBtn);
+  // Discreet on purpose: the tela is built around the number at the top, and
+  // backup is something the user does occasionally, not daily.
+  const configBtn = document.createElement('button');
+  configBtn.type = 'button';
+  configBtn.className = 'btn-config';
+  configBtn.textContent = 'Configurações';
+  configBtn.addEventListener('click', () => renderConfiguracoes(app));
+
+  app.append(podeGastarEl, saldoEl, lancarBtn, configBtn);
 
   if (undo && undo.expiresAt > Date.now()) {
     renderUndoToast(app, undo);
