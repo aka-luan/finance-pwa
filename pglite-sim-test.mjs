@@ -1,0 +1,13 @@
+import { PGlite } from '@electric-sql/pglite';
+import { readFileSync } from 'fs';
+const db = await PGlite.create();
+await db.exec(readFileSync('/home/claude/schema.sql','utf8'));
+await db.exec(readFileSync('/home/claude/seed.sql','utf8'));
+const q = async (l,s)=>{const r=await db.query(s);console.log('\n== '+l);console.table(r.rows);};
+await q('marcos', "select * from milestones('2026-08-08')");
+await q('marcos +1200 hoje', `select * from milestones('2026-08-08','[{"date":"2026-08-08","kind":"saida","amount_cents":120000}]')`);
+await q('pior momento', "select * from worst_point('2026-08-08')");
+await q('pendentes', "select * from pending_days('2026-08-08')");
+const t=Date.now();
+for(let i=0;i<20;i++) await db.query(`select * from milestones('2026-08-08','[{"date":"2026-08-08","kind":"saida","amount_cents":${100000+i}}]')`);
+console.log('\n20 simulações seguidas:', Date.now()-t,'ms total');
