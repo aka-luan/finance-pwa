@@ -150,6 +150,49 @@ returns date language sql immutable as $$
                then 0 else 1 end * interval '1 month');
 $$;
 
+-- Vencimento de um ciclo de fatura. Mesmo mês do ciclo se due_day cair
+-- depois do closing_day; senão, mês seguinte. Extraído de card_bill para
+-- que a prévia de parcelamento em Lançar (issue #7) use a mesma fórmula em
+-- vez de duplicá-la.
+create or replace function bill_due_date(cycle_month date, closing_day int, due_day int)
+returns date language sql immutable as $$
+  select case when due_day > closing_day
+              then clamp_day(cycle_month, due_day)
+              else clamp_day((cycle_month + interval '1 month')::date, due_day)
+         end;
+$$;
+
+-- Prévia de uma compra ainda não gravada: mesma divisão de parcelas e
+-- mesmo ciclo/vencimento de `installment`/`card_bill`, calculados antes do
+-- insert para a tela de Lançar mostrar o efeito (SPEC.md §7).
+create or replace function preview_installments(
+  p_card_id      uuid,
+  p_date         date,
+  p_amount_cents bigint,
+  p_installments int
+)
+returns table (
+  installment_no  int,
+  amount_cents    bigint,
+  cycle_month     date,
+  due_date        date
+)
+language sql stable as $$
+  select
+    n::int as installment_no,
+    p_amount_cents / p_installments
+      + case when n = 1 then p_amount_cents % p_installments else 0 end
+                    as amount_cents,
+    (bill_cycle(p_date, c.closing_day) + ((n - 1) * interval '1 month'))::date as cycle_month,
+    bill_due_date(
+      (bill_cycle(p_date, c.closing_day) + ((n - 1) * interval '1 month'))::date,
+      c.closing_day, c.due_day
+    ) as due_date
+  from card c
+  cross join lateral generate_series(1, p_installments) as n
+  where c.id = p_card_id;
+$$;
+
 -- ---------------------------------------------------------------------
 -- Views derivadas
 -- ---------------------------------------------------------------------
@@ -188,10 +231,7 @@ select
   p.card_id,
   p.cycle_month,
   sum(p.amount_cents) as amount_cents,
-  case when c.due_day > c.closing_day
-       then clamp_day(p.cycle_month, c.due_day)
-       else clamp_day((p.cycle_month + interval '1 month')::date, c.due_day)
-  end as due_date
+  bill_due_date(p.cycle_month, c.closing_day, c.due_day) as due_date
 from parts p
 join card c on c.id = p.card_id
 group by p.card_id, p.cycle_month, c.due_day, c.closing_day;

@@ -8,14 +8,15 @@
     "build": "tsc -p tsconfig.json --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "npm run typecheck && npm run test:loop && npm run test:pending && npm run test:backup && npm run test:recurrence && npm run test:marcos",
+    "test": "npm run typecheck && npm run test:loop && npm run test:pending && npm run test:backup && npm run test:recurrence && npm run test:marcos && npm run test:card",
     "test:smoke": "node pglite-smoke-test.mjs",
     "test:sim": "node pglite-sim-test.mjs",
     "test:loop": "node pglite-loop-test.mjs",
     "test:backup": "node pglite-backup-test.mjs",
     "test:pending": "node pglite-pending-test.mjs",
     "test:recurrence": "node pglite-recurrence-test.mjs",
-    "test:marcos": "node pglite-marcos-test.mjs"
+    "test:marcos": "node pglite-marcos-test.mjs",
+    "test:card": "node pglite-card-test.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "0.5.4"

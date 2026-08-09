@@ -1,9 +1,12 @@
 import { getDb } from '../db';
-import { deleteTransactions } from '../db/queries.mjs';
+import { deletePurchase, deleteTransactions } from '../db/queries.mjs';
 
 export interface UndoState {
   ids: string[];
   expiresAt: number;
+  // Defaults to 'transaction' — the only kind before Cartão (issue #7)
+  // added a second table a save can undo.
+  kind?: 'transaction' | 'purchase';
 }
 
 // "Desfazer disponível por alguns segundos após salvar. Lançamento rápido
@@ -27,7 +30,11 @@ export function renderUndoToast(app: HTMLDivElement, undo: UndoState, onUndone: 
       undoBtn.disabled = true;
       try {
         const db = await getDb();
-        await deleteTransactions(db, undo.ids);
+        if (undo.kind === 'purchase') {
+          await Promise.all(undo.ids.map((id) => deletePurchase(db, id)));
+        } else {
+          await deleteTransactions(db, undo.ids);
+        }
         onUndone();
       } catch (err) {
         undoBtn.disabled = false;

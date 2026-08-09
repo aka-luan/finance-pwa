@@ -76,3 +76,53 @@ export function updateRecurrence(
 ): Promise<void>;
 
 export function deactivateRecurrence(db: PGlite, id: string, today: string): Promise<void>;
+
+export interface Card {
+  id: string;
+  name: string;
+  closing_day: number;
+  due_day: number;
+  archived_at: string | null;
+}
+
+export function listCards(db: PGlite): Promise<Card[]>;
+
+export interface CardInput {
+  name: string;
+  closingDay: number;
+  dueDay: number;
+}
+
+export function createCard(db: PGlite, input: CardInput): Promise<string>;
+
+export function updateCard(db: PGlite, id: string, input: CardInput): Promise<void>;
+
+export function archiveCard(db: PGlite, id: string, today: string): Promise<void>;
+
+export interface InstallmentPreview {
+  installment_no: number;
+  amount_cents: bigint;
+  cycle_month: string;
+  due_date: string;
+}
+
+export function previewInstallments(
+  db: PGlite,
+  cardId: string,
+  date: string,
+  amountCents: bigint,
+  installments: number,
+): Promise<InstallmentPreview[]>;
+
+export interface PurchaseInput {
+  cardId: string;
+  date: string;
+  amountCents: bigint;
+  installments: number;
+  description?: string;
+  categoryId?: string;
+}
+
+export function insertPurchase(db: PGlite, input: PurchaseInput): Promise<string>;
+
+export function deletePurchase(db: PGlite, id: string): Promise<void>;

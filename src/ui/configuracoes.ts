@@ -8,6 +8,7 @@ import {
   serializeBackup,
 } from '../db/backup.mjs';
 import { todayBelem } from '../db/queries.mjs';
+import { renderCartoes } from './cartoes';
 import { formatTimestamp } from './format';
 import { renderHoje } from './hoje';
 import { renderRecorrencias } from './recorrencias';
@@ -32,6 +33,16 @@ export function renderConfiguracoes(app: HTMLDivElement): void {
   recorrenciasBtn.className = 'btn-bloco';
   recorrenciasBtn.textContent = 'Gerenciar recorrências';
   recorrenciasBtn.addEventListener('click', () => renderRecorrencias(app));
+
+  const cartoesTitle = document.createElement('h2');
+  cartoesTitle.className = 'config-secao';
+  cartoesTitle.textContent = 'Cartões';
+
+  const cartoesBtn = document.createElement('button');
+  cartoesBtn.type = 'button';
+  cartoesBtn.className = 'btn-bloco';
+  cartoesBtn.textContent = 'Gerenciar cartões';
+  cartoesBtn.addEventListener('click', () => renderCartoes(app));
 
   const sectionTitle = document.createElement('h2');
   sectionTitle.className = 'config-secao';
@@ -183,6 +194,8 @@ export function renderConfiguracoes(app: HTMLDivElement): void {
     title,
     recorrenciasTitle,
     recorrenciasBtn,
+    cartoesTitle,
+    cartoesBtn,
     sectionTitle,
     explanation,
     exportarBtn,

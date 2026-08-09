@@ -155,6 +155,70 @@ export async function deactivateRecurrence(db, id, today) {
   );
 }
 
+// Cartões (issue #7): CRUD simples de closing_day/due_day. Arquivar em vez
+// de apagar — installment/card_bill leem o card por id, então compras já
+// lançadas continuam válidas mesmo depois do cartão sair de uso.
+export async function listCards(db) {
+  const { rows } = await db.query(
+    `select id, name, closing_day, due_day, archived_at
+     from card
+     order by archived_at nulls first, name`,
+  );
+  return rows;
+}
+
+export async function createCard(db, { name, closingDay, dueDay }) {
+  const id = crypto.randomUUID();
+  await db.query(
+    `insert into card (id, name, closing_day, due_day) values ($1, $2, $3, $4)`,
+    [id, name, closingDay, dueDay],
+  );
+  return id;
+}
+
+// Edição vale para trás: installment/card_bill leem closing_day/due_day
+// atuais do cartão, então mudar aqui recicla o ciclo/vencimento de compras
+// já gravadas, não só das futuras. Aceitável para corrigir um cadastro
+// errado; não há versão histórica do card.
+export async function updateCard(db, id, { name, closingDay, dueDay }) {
+  await db.query(
+    `update card set name = $2, closing_day = $3, due_day = $4 where id = $1`,
+    [id, name, closingDay, dueDay],
+  );
+}
+
+export async function archiveCard(db, id, today) {
+  await db.query(`update card set archived_at = $2 where id = $1`, [id, today]);
+}
+
+// Prévia de parcelamento antes de salvar (SPEC.md §7): mesma fórmula de
+// preview_installments/card_bill em schema.sql, sem gravar nada.
+export async function previewInstallments(db, cardId, date, amountCents, installments) {
+  const { rows } = await db.query(
+    `select installment_no, amount_cents, cycle_month, due_date
+     from preview_installments($1::uuid, $2::date, $3::bigint, $4::int)
+     order by installment_no`,
+    [cardId, date, amountCents, installments],
+  );
+  return rows;
+}
+
+// Compra no cartão. Não toca o saldo: só insere em `purchase`, e
+// installment/card_bill fazem o resto (SPEC.md §3).
+export async function insertPurchase(db, { cardId, date, amountCents, installments, description, categoryId }) {
+  const id = crypto.randomUUID();
+  await db.query(
+    `insert into purchase (id, card_id, date, amount_cents, installments, description, category_id)
+     values ($1, $2, $3, $4, $5, $6, $7)`,
+    [id, cardId, date, amountCents, installments, description ?? null, categoryId ?? null],
+  );
+  return id;
+}
+
+export async function deletePurchase(db, id) {
+  await db.query('delete from purchase where id = $1', [id]);
+}
+
 // "Acertar saldo": o usuário digita o saldo real que o banco mostra agora,
 // e a partir daqui o cálculo não olha mais atrás desta data.
 //
