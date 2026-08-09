@@ -58,6 +58,12 @@ servidor previsto em §5 substitui esta tela como caminho principal.
   de histórico que motivam a funcionalidade, e recusar deixaria o usuário sem
   nada. Restaurar não destrói o que está fora da lista — o `truncate` só
   alcança as tabelas que ela nomeia.
+- `parseBackup` exige **todas** as tabelas da lista. Aceitar uma tabela
+  ausente como vazia deixaria um arquivo com `tables: {}` passar na validação
+  e apagar o banco — justamente o que a validação existe para impedir. O preço
+  é que acrescentar uma tabela a `BACKUP_TABLES` invalida os arquivos antigos:
+  quando isso acontecer, sobe-se `BACKUP_VERSION` e ensina-se `parseBackup` a
+  ler a versão anterior preenchendo com `[]` as tabelas que ela não conhecia.
 - O teste compara **todas as colunas de todas as tabelas**, não só a linha do
   tempo. `timeline()` não lê `day_settled`, `estimate_dismissal`,
   `category.name`, `recurrence.label` nem `purchase.description`, então um

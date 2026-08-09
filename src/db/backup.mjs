@@ -12,6 +12,11 @@ export const BACKUP_VERSION = 1;
 // Parents before children. Import inserts in this order because foreign keys
 // are checked immediately, not deferred; the wipe truncates the whole list in
 // one statement so the FKs between them are satisfied at the same instant.
+//
+// Adding a table here breaks older files: parseBackup requires every name in
+// this list to be present, so a backup exported before the addition would be
+// rejected. When this list grows, bump BACKUP_VERSION and teach parseBackup to
+// accept the older version by filling the tables it predates with [].
 export const BACKUP_TABLES = [
   'category',
   'card',
@@ -108,6 +113,11 @@ export function parseBackup(text) {
     throw new Error('Backup sem tabelas.');
   }
 
+  // Every table has to be there. Treating a missing one as empty would let a
+  // file with `tables: {}` pass validation and wipe the database — the exact
+  // failure this function exists to prevent. The cost is that growing
+  // BACKUP_TABLES invalidates older files, which is why that list carries the
+  // instruction to bump BACKUP_VERSION and fill the new tables with [] here.
   for (const table of BACKUP_TABLES) {
     if (!Array.isArray(parsed.tables[table])) {
       throw new Error(`Backup incompleto: falta a tabela ${table}.`);
