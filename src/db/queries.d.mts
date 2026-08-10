@@ -38,13 +38,18 @@ export interface TimelineDay {
 
 export function getTimeline(db: PGlite, today: string): Promise<TimelineDay[]>;
 
-export interface DiarioItem {
+export interface TransactionItem {
   amountCents: bigint;
   categoryId?: string;
   note?: string;
 }
 
-export function insertDiario(db: PGlite, date: string, items: DiarioItem[]): Promise<string[]>;
+export function insertTransactions(
+  db: PGlite,
+  date: string,
+  kind: 'diario' | 'saida' | 'entrada',
+  items: TransactionItem[],
+): Promise<string[]>;
 
 export function deleteTransactions(db: PGlite, ids: string[]): Promise<void>;
 

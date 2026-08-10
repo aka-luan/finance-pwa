@@ -2,7 +2,7 @@ import { PGlite } from '@electric-sql/pglite';
 import { readFileSync } from 'fs';
 import assert from 'node:assert/strict';
 import { pgliteParsers } from './src/db/pglite-config.mjs';
-import { getHoje, insertDiario, deleteTransactions, settleDay } from './src/db/queries.mjs';
+import { getHoje, insertTransactions, deleteTransactions, settleDay } from './src/db/queries.mjs';
 
 const db = await PGlite.create({ parsers: pgliteParsers });
 await db.exec(readFileSync(new URL('./schema.sql', import.meta.url), 'utf8'));
@@ -31,7 +31,7 @@ await db.exec(`
 }
 
 // Salvar: multiple items, one row each, saldo and pode-gastar both move.
-const ids = await insertDiario(db, today, [
+const ids = await insertTransactions(db, today, 'diario', [
   { amountCents: 1500n },
   { amountCents: 2000n },
 ]);

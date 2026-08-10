@@ -81,16 +81,18 @@ export async function getTimeline(db, today) {
 
 // One transaction row per item (not a summed total) — §7's list exists so
 // the user can check line-by-line against the fatura, and categoria is per
-// item. Returns the generated ids so a save can be undone.
-export async function insertDiario(db, date, items) {
+// item. Returns the generated ids so a save can be undone. Shared by
+// Diário/Saída/Entrada manual entry (issue #12) — they're the same
+// list-of-values UI, differing only in the kind written per row.
+export async function insertTransactions(db, date, kind, items) {
   const rows = items.map((item) => ({ id: crypto.randomUUID(), item }));
 
   await db.transaction(async (tx) => {
     for (const { id, item } of rows) {
       await tx.query(
         `insert into transaction (id, date, kind, amount_cents, category_id, note)
-         values ($1, $2, 'diario', $3, $4, $5)`,
-        [id, date, item.amountCents, item.categoryId ?? null, item.note ?? null],
+         values ($1, $2, $3, $4, $5, $6)`,
+        [id, date, kind, item.amountCents, item.categoryId ?? null, item.note ?? null],
       );
     }
   });

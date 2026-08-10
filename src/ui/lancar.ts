@@ -1,7 +1,7 @@
 import { getDb } from '../db';
 import {
-  insertDiario,
   insertPurchase,
+  insertTransactions,
   listCards,
   previewInstallments,
   settleDay,
@@ -31,10 +31,10 @@ export interface LancarOptions {
   undo?: UndoState;
 }
 
-// Tela Lançar (SPEC.md §7): Diário (lista de valores) e Cartão (compra
-// parcelada, issue #7). Entrada/Saída manuais não são pedidos por nenhum
-// ticket ainda — só as recorrências os alimentam por ora — então o toggle
-// abaixo fica com dois modos, não os quatro do §7.
+// Tela Lançar (SPEC.md §7): quatro modos — Diário, Saída, Entrada (lista de
+// valores, issue #12) e Cartão (compra parcelada, issue #7). Diário/Saída/
+// Entrada compartilham a mesma seção de lista-de-valores; só o `kind`
+// gravado por linha muda.
 export function renderLancar(app: HTMLDivElement, options: LancarOptions = {}): void {
   const { recovery, undo } = options;
 
@@ -49,7 +49,7 @@ export function renderLancar(app: HTMLDivElement, options: LancarOptions = {}): 
   app.innerHTML = '';
   app.className = 'screen screen-lancar';
 
-  let tipo: 'diario' | 'cartao' = 'diario';
+  let tipo: 'diario' | 'saida' | 'entrada' | 'cartao' = 'diario';
   const items: Item[] = [];
 
   // Data grande e explícita mesmo em recuperação: a posição diz onde o
@@ -78,6 +78,14 @@ export function renderLancar(app: HTMLDivElement, options: LancarOptions = {}): 
   const diarioBtn = document.createElement('button');
   diarioBtn.type = 'button';
   diarioBtn.textContent = 'Diário';
+
+  const saidaBtn = document.createElement('button');
+  saidaBtn.type = 'button';
+  saidaBtn.textContent = 'Saída';
+
+  const entradaBtn = document.createElement('button');
+  entradaBtn.type = 'button';
+  entradaBtn.textContent = 'Entrada';
 
   const cartaoBtn = document.createElement('button');
   cartaoBtn.type = 'button';
@@ -257,29 +265,51 @@ export function renderLancar(app: HTMLDivElement, options: LancarOptions = {}): 
 
   // --- Tipo switching ------------------------------------------------
 
+  const isLista = (t: typeof tipo): boolean => t !== 'cartao';
+
   const renderTipo = (): void => {
     diarioBtn.classList.toggle('kind-ativo', tipo === 'diario');
+    saidaBtn.classList.toggle('kind-ativo', tipo === 'saida');
+    entradaBtn.classList.toggle('kind-ativo', tipo === 'entrada');
     cartaoBtn.classList.toggle('kind-ativo', tipo === 'cartao');
     diarioBtn.setAttribute('aria-pressed', String(tipo === 'diario'));
+    saidaBtn.setAttribute('aria-pressed', String(tipo === 'saida'));
+    entradaBtn.setAttribute('aria-pressed', String(tipo === 'entrada'));
     cartaoBtn.setAttribute('aria-pressed', String(tipo === 'cartao'));
-    diarioSection.hidden = tipo !== 'diario';
+    diarioSection.hidden = !isLista(tipo);
     cartaoSection.hidden = tipo !== 'cartao';
-    naoGasteiBtn.hidden = tipo !== 'diario';
+    naoGasteiBtn.hidden = !isLista(tipo);
     errorEl.textContent = '';
   };
 
-  diarioBtn.addEventListener('click', () => {
-    tipo = 'diario';
+  // Items são gravados com o `kind` vigente no momento do Salvar (§ acima),
+  // então trocar de pill com itens pendentes classificaria um gasto como
+  // receita ou vice-versa em silêncio. Mais seguro perder o que não foi
+  // salvo do que gravar com o kind errado sem avisar.
+  const selecionarLista = (novoTipo: 'diario' | 'saida' | 'entrada'): void => {
+    // Só limpa ao trocar entre kinds da lista: Cartão nunca toca `items`
+    // (usa cartaoAmount/cardSelect à parte), então ir e voltar por ele não
+    // deveria custar os valores ainda não salvos.
+    if (isLista(tipo) && novoTipo !== tipo) {
+      items.length = 0;
+      amount.clear();
+      renderList();
+    }
+    tipo = novoTipo;
     renderTipo();
     amount.input.focus();
-  });
+  };
+
+  diarioBtn.addEventListener('click', () => selecionarLista('diario'));
+  saidaBtn.addEventListener('click', () => selecionarLista('saida'));
+  entradaBtn.addEventListener('click', () => selecionarLista('entrada'));
   cartaoBtn.addEventListener('click', () => {
     tipo = 'cartao';
     renderTipo();
     void loadCardsOnce();
   });
 
-  tipoToggle.append(diarioBtn, cartaoBtn);
+  tipoToggle.append(diarioBtn, saidaBtn, entradaBtn, cartaoBtn);
 
   // --- Footer ----------------------------------------------------------
 
@@ -312,7 +342,7 @@ export function renderLancar(app: HTMLDivElement, options: LancarOptions = {}): 
     }
   };
 
-  const salvarDiario = async (): Promise<void> => {
+  const salvarLista = async (kind: 'diario' | 'saida' | 'entrada'): Promise<void> => {
     // A value typed but not yet added with "+" is still meant to be saved.
     commitItem();
     if (items.length === 0) return;
@@ -322,9 +352,10 @@ export function renderLancar(app: HTMLDivElement, options: LancarOptions = {}): 
     errorEl.textContent = '';
     try {
       const db = await getDb();
-      const ids = await insertDiario(
+      const ids = await insertTransactions(
         db,
         date,
+        kind,
         items.map((item) => ({ amountCents: item.amountCents })),
       );
       avancar({ ids, expiresAt: Date.now() + 5000 });
@@ -370,7 +401,7 @@ export function renderLancar(app: HTMLDivElement, options: LancarOptions = {}): 
   };
 
   const salvar = (): void => {
-    void (tipo === 'diario' ? salvarDiario() : salvarCartao());
+    void (tipo === 'cartao' ? salvarCartao() : salvarLista(tipo));
   };
 
   const naoGastei = async (): Promise<void> => {

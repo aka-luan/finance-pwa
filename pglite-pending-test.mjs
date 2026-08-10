@@ -6,7 +6,7 @@ import { readFileSync } from 'fs';
 import assert from 'node:assert/strict';
 import { pgliteParsers } from './src/db/pglite-config.mjs';
 import { splitSchema } from './src/db/schema.mjs';
-import { getHoje, insertDiario, pendingDays, setAnchor, settleDay } from './src/db/queries.mjs';
+import { getHoje, insertTransactions, pendingDays, setAnchor, settleDay } from './src/db/queries.mjs';
 
 const schemaSql = readFileSync(new URL('./schema.sql', import.meta.url), 'utf8');
 const today = '2026-08-09';
@@ -31,7 +31,7 @@ async function anchor(db, date, amountCents) {
   assert.deepEqual(await pendingDays(db, today), [], 'banco vazio não tem pendências');
 
   await anchor(db, '2026-08-02', 100000n);
-  await insertDiario(db, '2026-08-05', [{ amountCents: 5000n }]);
+  await insertTransactions(db, '2026-08-05', 'diario', [{ amountCents: 5000n }]);
   await settleDay(db, '2026-08-06');
 
   assert.deepEqual(await pendingDays(db, today), [
@@ -50,10 +50,10 @@ async function anchor(db, date, amountCents) {
   await anchor(db, '2026-08-01', 100000n);
   assert.equal((await getHoje(db, today)).saldoCents, 100000n);
 
-  await insertDiario(db, '2026-08-05', [{ amountCents: 5000n }]);
+  await insertTransactions(db, '2026-08-05', 'diario', [{ amountCents: 5000n }]);
   assert.equal((await getHoje(db, today)).saldoCents, 95000n);
 
-  await insertDiario(db, '2026-08-07', [{ amountCents: 2500n }]);
+  await insertTransactions(db, '2026-08-07', 'diario', [{ amountCents: 2500n }]);
   assert.equal((await getHoje(db, today)).saldoCents, 92500n);
 }
 
@@ -62,7 +62,7 @@ async function anchor(db, date, amountCents) {
 {
   const db = await freshDb();
   await anchor(db, '2026-08-01', 100000n);
-  await insertDiario(db, '2026-08-05', [{ amountCents: 5000n }]);
+  await insertTransactions(db, '2026-08-05', 'diario', [{ amountCents: 5000n }]);
   assert.equal((await pendingDays(db, today)).length, 7); // 08-01 a 08-08, menos o 05
 
   await setAnchor(db, today, 250000n);
@@ -83,13 +83,13 @@ async function anchor(db, date, amountCents) {
 {
   const db = await freshDb();
   await anchor(db, '2026-08-01', 100000n);
-  await insertDiario(db, today, [{ amountCents: 3000n }]);
+  await insertTransactions(db, today, 'diario', [{ amountCents: 3000n }]);
   assert.equal((await getHoje(db, today)).saldoCents, 97000n);
 
   await setAnchor(db, today, 45000n);
   assert.equal((await getHoje(db, today)).saldoCents, 45000n);
 
-  await insertDiario(db, today, [{ amountCents: 1000n }]);
+  await insertTransactions(db, today, 'diario', [{ amountCents: 1000n }]);
   assert.equal((await getHoje(db, today)).saldoCents, 44000n);
 }
 
