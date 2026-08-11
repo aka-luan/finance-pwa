@@ -107,11 +107,34 @@ export function leftoverAfterPlan(state: WizardState): bigint {
 }
 
 export function dailyEstimate(state: WizardState): bigint {
-  return monthlyTotal(state) / 30n;
+  return divRoundHalfUp(monthlyTotal(state), 30n);
 }
 
 export function previewToday(state: WizardState): bigint {
   return dailyEstimate(state) - state.spentTodayCents;
+}
+
+/**
+ * BigInt division rounding: "half up" to the nearest integer, ties away from 0.
+ *
+ * Example (d=30):
+ *  -  149/30 -> 5  (remainder 29)
+ *  -  150/30 -> 5 + 1 (exact half)
+ *  - -149/30 -> -5 (remainder -29, abs 29)
+ *  - -150/30 -> -5 - 1 (exact half, away from 0)
+ */
+function divRoundHalfUp(n: bigint, d: bigint): bigint {
+  if (d === 0n) throw new Error('divRoundHalfUp: divisor must be non-zero');
+  if (n === 0n) return 0n;
+
+  const sign = n < 0n ? -1n : 1n;
+  const absN = n < 0n ? -n : n;
+  const absQ = absN / (d < 0n ? -d : d);
+  const absR = absN % (d < 0n ? -d : d);
+
+  // "half up": increment when remainder is >= half the divisor.
+  const absD = d < 0n ? -d : d;
+  return sign * (absR * 2n >= absD ? absQ + 1n : absQ);
 }
 
 export function canConfirm(state: WizardState): boolean {
