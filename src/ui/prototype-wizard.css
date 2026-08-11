@@ -1,0 +1,503 @@
+/* PROTOTYPE ONLY — styles for ?prototype=wizard. Safe to delete with the
+   prototype modules. Uses product tokens; layout is intentionally distinct
+   per variant. */
+
+.proto-shell {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  padding-bottom: 72px;
+}
+
+.proto-modebar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  padding: 8px var(--lado);
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
+  border-bottom: 1px solid var(--border);
+}
+
+.proto-mode-btn {
+  background: var(--surface-pill);
+  color: var(--fg-secundario);
+  border: 1px solid var(--border-control);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+.proto-stage {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.proto-wizard {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 480px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.proto-title {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: var(--fg-hero);
+  line-height: 1.25;
+}
+
+.proto-hint {
+  margin: 0;
+  color: var(--fg-secundario);
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.proto-progress {
+  font-size: 0.8rem;
+  color: var(--fg-terciario);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.proto-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  flex: 1;
+}
+
+.proto-footer {
+  display: flex;
+  gap: 10px;
+  margin-top: auto;
+  padding-top: 12px;
+}
+
+.proto-btn {
+  flex: 1;
+  border-radius: 12px;
+  padding: 14px 16px;
+  font-size: 1rem;
+  font-weight: 500;
+  border: 1px solid transparent;
+}
+
+.proto-btn:disabled {
+  opacity: 0.4;
+}
+
+.proto-btn-primary {
+  background: var(--acao);
+  color: var(--acao-fg);
+  border-color: var(--acao-border);
+}
+
+.proto-btn-secondary {
+  background: transparent;
+  color: var(--fg-secundario-claro);
+  border-color: var(--border-control);
+}
+
+.proto-linkish {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  color: var(--acao-texto-claro);
+  padding: 4px 0;
+  font-size: 0.95rem;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.proto-money {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  background: var(--surface-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+
+.proto-money span {
+  color: var(--fg-saldo);
+  font-size: 0.95rem;
+}
+
+.proto-money input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--fg-hero);
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 1.35rem;
+  outline: none;
+  min-width: 0;
+}
+
+.proto-cat-list,
+.proto-compare {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.proto-cat-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.proto-a .proto-cat-row .proto-money {
+  /* Amount sits under the full name — side-by-side crushed long labels. */
+  align-self: stretch;
+}
+
+.proto-cat-name {
+  background: var(--surface-pill);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--fg);
+  padding: 10px 12px;
+  font-size: 0.95rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.proto-running {
+  margin: 8px 0 0;
+  color: var(--fg-secundario);
+  font-size: 0.9rem;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.proto-section {
+  margin: 18px 0 8px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--fg-terciario);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.proto-fixed .proto-section:first-child {
+  margin-top: 0;
+}
+
+.proto-compare-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.proto-compare-name {
+  font-weight: 500;
+}
+
+.proto-compare-nums {
+  font-size: 0.8rem;
+  color: var(--fg-terciario);
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.proto-bar {
+  height: 4px;
+  background: var(--surface-key);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.proto-bar-fill {
+  height: 100%;
+  background: var(--acao);
+  width: 0;
+}
+
+.proto-bar-fill.over {
+  background: var(--ambar);
+}
+
+.proto-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--surface-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px;
+}
+
+.proto-summary-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--fg-secundario);
+}
+
+.proto-mono {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-hero);
+}
+
+.proto-summary-cats {
+  margin: 8px 0 0;
+  padding-left: 1.1rem;
+  color: var(--fg-item);
+  font-size: 0.9rem;
+}
+
+/* —— Variant B —— */
+.proto-b {
+  max-width: 520px;
+  padding-bottom: 140px;
+}
+
+.proto-b-head {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.proto-b-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.proto-b-block h2 {
+  margin: 0 0 10px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--fg-terciario);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.proto-b-cat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.proto-b-cat-top {
+  display: grid;
+  grid-template-columns: 1fr minmax(120px, 40%);
+  gap: 8px;
+}
+
+.proto-b-cmp {
+  font-size: 0.75rem;
+  color: var(--fg-fraco);
+  font-family: var(--mono);
+  padding-left: 2px;
+}
+
+.proto-b-dock {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 56px;
+  z-index: 4;
+  background: color-mix(in srgb, var(--bg) 94%, transparent);
+  border-top: 1px solid var(--border);
+  padding: 10px var(--lado) calc(10px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+.proto-b-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  font-size: 0.75rem;
+  color: var(--fg-terciario);
+}
+
+.proto-b-stats strong {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.95rem;
+}
+
+/* —— Variant C —— */
+.proto-c {
+  max-width: none;
+  display: grid;
+  grid-template-columns: minmax(120px, 34%) 1fr;
+  gap: 0;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.proto-c-rail {
+  background: var(--surface-aviso);
+  border-right: 1px solid var(--border-aviso);
+  padding: 24px 16px;
+  position: sticky;
+  top: 40px;
+  align-self: start;
+  min-height: calc(100vh - 40px);
+}
+
+.proto-c-live-kicker {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--fg-terciario);
+}
+
+.proto-c-live-num {
+  font-size: 1.6rem;
+  font-weight: 600;
+  color: var(--fg-hero);
+  margin: 6px 0;
+}
+
+.proto-c-live-sub {
+  font-size: 0.75rem;
+  color: var(--fg-secundario);
+  margin-top: 4px;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.proto-c-main {
+  padding: 16px var(--lado) 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 480px;
+}
+
+.proto-c-saldo {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.proto-c-saldo > label {
+  font-size: 0.8rem;
+  color: var(--fg-terciario);
+}
+
+.proto-c-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.proto-c-item {
+  background: var(--surface-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.proto-c-badge {
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--surface-pill);
+  color: var(--fg-secundario);
+  width: fit-content;
+}
+
+.proto-c-badge.over {
+  background: var(--ambar-bg);
+  color: var(--ambar);
+  border: 1px solid var(--ambar-border);
+}
+
+.proto-c-badge.under {
+  background: var(--surface-aviso);
+  color: var(--acao-texto-claro);
+}
+
+.proto-c-dual {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.75rem;
+  color: var(--fg-fraco);
+  font-family: var(--mono);
+}
+
+.proto-c-edit {
+  display: grid;
+  grid-template-columns: 1fr minmax(110px, 38%);
+  gap: 8px;
+}
+
+.proto-c-save {
+  margin-top: 8px;
+}
+
+@media (max-width: 640px) {
+  .proto-c {
+    grid-template-columns: 1fr;
+  }
+
+  .proto-c-rail {
+    position: static;
+    min-height: 0;
+    border-right: none;
+    border-bottom: 1px solid var(--border-aviso);
+  }
+}
+
+/* Switcher — obviously not product chrome */
+.proto-switcher {
+  position: fixed;
+  left: 50%;
+  bottom: max(12px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #f2f5f6;
+  color: #0d0f10;
+  border-radius: 999px;
+  padding: 8px 10px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 45%);
+  font-size: 12px;
+  font-weight: 600;
+  max-width: calc(100vw - 24px);
+}
+
+.proto-switcher-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  border: none;
+  background: #0d0f10;
+  color: #f2f5f6;
+  font-size: 14px;
+}
+
+.proto-switcher-label {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+}

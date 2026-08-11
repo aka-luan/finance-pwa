@@ -1,12 +1,12 @@
 # Mapa: wizard de planejamento financeiro
 
-> Artefato local temporário. O repositório usa GitHub Issues, mas o GitHub CLI e o plugin GitHub não estavam disponíveis durante o mapeamento. Cada seção em **Tickets abertos** foi escrita para virar uma issue.
+> Canonical map: [#14](https://github.com/aka-luan/finance-pwa/issues/14). This file mirrors the chart for local reading; open tickets live as child issues of that map.
 
-## Destino
+## Destination
 
 Produzir uma especificação pronta para implementar um wizard que configure o saldo em conta e derive a estimativa diária de um orçamento mensal de gastos cotidianos, tanto no primeiro uso quanto em uma recalibração pelas Configurações.
 
-## Notas
+## Notes
 
 - Domínio: PWA financeira pessoal, local-first, com dinheiro persistido em centavos e datas no fuso `America/Belem`.
 - Skills a consultar ao trabalhar os tickets: `domain-modeling`; `prototype` no ticket de experiência; `codebase-design` nos tickets de persistência e estado.
@@ -14,7 +14,7 @@ Produzir uma especificação pronta para implementar um wizard que configure o s
 - Compras no cartão de crédito e despesas fixas não compõem o orçamento de gastos cotidianos.
 - A implementação não faz parte deste mapa; o mapa termina quando as decisões necessárias para uma especificação estiverem resolvidas.
 
-## Decisões até aqui
+## Decisions so far
 
 - O wizard é obrigatório quando o banco está vazio; o usuário conclui o planejamento ou restaura um backup.
 - O mesmo fluxo pode ser reaberto em **Configurações → Recalibrar planejamento**.
@@ -26,121 +26,37 @@ Produzir uma especificação pronta para implementar um wizard que configure o s
 - Apenas gastos cotidianos pagos diretamente pelo saldo em conta, como Pix ou débito, entram no cálculo; compras no cartão ficam fora.
 - A composição por categoria é persistida e reaparece preenchida na recalibração.
 - Com 30 dias de histórico, a recalibração compara planejado e realizado por categoria, mas nunca substitui o planejamento automaticamente.
-- A confirmação mostra saldo atual, categorias, total mensal, estimativa diária e prévia de hoje.
-- Saldo, composição e estimativa são gravados juntos na confirmação.
+- A confirmação grava saldo, fixos (entradas/saídas), composição cotidiana e estimativa juntos.
+- [Definir a experiência do wizard de planejamento](https://github.com/aka-luan/finance-pwa/issues/15) — Variante A em quatro passos: saldo → fixos (entradas vs saídas) → cotidiano por alto (média do mês = prévia do diário) → resumo. Protótipo em `src/ui/prototype-wizard*` (`/?prototype=wizard&variant=A`).
 
-## Tickets abertos
+## Children
 
-### Definir a experiência do wizard de planejamento
-
-**Rótulo:** `wayfinder:prototype`  
-**Estado:** aberto, não atribuído  
-**Bloqueado por:** ninguém — fronteira inicial
-
-#### Pergunta
-
-Qual sequência de etapas, conteúdo, controles e estados de interface torna compreensível o primeiro planejamento e a recalibração, incluindo saldo negativo, categorias editáveis, restauração de backup, comparação com o realizado e confirmação final?
-
-#### Restrições conhecidas
-
-- A UI é mobile-first, em português do Brasil, com DOM imperativo e sem roteador.
-- A tela Hoje é renderizada imediatamente na inicialização atual; o protótipo precisa contemplar o estado enquanto o banco decide entre Hoje e wizard.
-- O primeiro uso não pode ser pulado.
-- A recalibração deve preencher os valores vigentes.
-
----
-
-### Fechar as regras de cálculo e comparação do planejamento
-
-**Rótulo:** `wayfinder:grilling`  
-**Estado:** aberto, não atribuído  
-**Bloqueado por:** ninguém — fronteira inicial
-
-#### Pergunta
-
-Quais são as regras exatas de arredondamento da divisão mensal por 30, vigência da nova estimativa, janela dos 30 dias realizados, tratamento de lançamentos sem categoria e apresentação de diferenças entre planejado e realizado?
-
-#### Restrições conhecidas
-
-- Valores monetários são inteiros em centavos.
-- A prévia diária pode ser negativa.
-- A comparação real é informativa e não altera o planejamento automaticamente.
-- A recalibração não pode reescrever estimativas históricas.
-
----
-
-### Definir o modelo persistente do orçamento mensal
-
-**Rótulo:** `wayfinder:grilling`  
-**Estado:** aberto, não atribuído  
-**Bloqueado por:** ninguém — fronteira inicial
-
-#### Pergunta
-
-Como representar a composição mensal por categoria e sua vigência, relacioná-la às categorias dos lançamentos e preservar explicabilidade histórica sem duplicar conceitos do domínio?
-
-#### Restrições conhecidas
-
-- `category` guarda hoje somente `id` e nome.
-- `daily_estimate` guarda somente o total diário e a data de vigência.
-- A composição vigente precisa ser recuperada na recalibração.
-- O total diário histórico precisa continuar reproduzível.
-
----
-
-### Definir a detecção, retomada e conclusão do primeiro uso
-
-**Rótulo:** `wayfinder:grilling`  
-**Estado:** aberto, não atribuído  
-**Bloqueado por:** **Definir o modelo persistente do orçamento mensal**
-
-#### Pergunta
-
-Qual estado persistido distingue banco novo, wizard incompleto, planejamento concluído e backup restaurado, e como o app escolhe a primeira tela sem exibir dados enganosos ou deixar gravações parciais?
-
-#### Restrições conhecidas
-
-- Ausência de saldo e estimativa, isoladamente, não identifica todos os estados.
-- A conclusão deve gravar saldo, orçamento e estimativa atomicamente.
-- Restaurar backup substitui todo o conteúdo conhecido do banco.
-
----
-
-### Definir migração e compatibilidade dos backups
-
-**Rótulo:** `wayfinder:grilling`  
-**Estado:** aberto, não atribuído  
-**Bloqueado por:** **Definir o modelo persistente do orçamento mensal**
-
-#### Pergunta
-
-Como introduzir as novas estruturas em bancos existentes e no backup JSON, mantendo restauração de arquivos anteriores e impedindo perda silenciosa da composição do planejamento?
-
-#### Restrições conhecidas
-
-- Uma tabela persistente nova precisa entrar em `BACKUP_TABLES`.
-- Alterar o conjunto obrigatório de tabelas exige nova versão do backup e leitura compatível da versão anterior.
-- O bootstrap atual não possui um mecanismo geral de migrações de tabelas para instalações existentes.
+- [x] [#15 Definir a experiência do wizard de planejamento](https://github.com/aka-luan/finance-pwa/issues/15) — resolvido
+- [ ] [#16 Fechar as regras de cálculo e comparação do planejamento](https://github.com/aka-luan/finance-pwa/issues/16) — `wayfinder:grilling` · fronteira
+- [ ] [#17 Definir o modelo persistente do orçamento mensal](https://github.com/aka-luan/finance-pwa/issues/17) — `wayfinder:grilling` · fronteira
+- [ ] [#18 Definir a detecção, retomada e conclusão do primeiro uso](https://github.com/aka-luan/finance-pwa/issues/18) — `wayfinder:grilling` · bloqueado por #17
+- [ ] [#19 Definir migração e compatibilidade dos backups](https://github.com/aka-luan/finance-pwa/issues/19) — `wayfinder:grilling` · bloqueado por #17
+- [ ] [#20 Definir como o wizard grava entradas e saídas fixas](https://github.com/aka-luan/finance-pwa/issues/20) — `wayfinder:grilling` · fronteira
 
 ## Dependências
 
 ```text
-Definir a experiência do wizard de planejamento ───────────────┐
-Fechar as regras de cálculo e comparação do planejamento ─────┼─→ especificação pronta
-Definir o modelo persistente do orçamento mensal ──────────────┤
-  ├─→ Definir a detecção, retomada e conclusão do primeiro uso ┤
-  └─→ Definir migração e compatibilidade dos backups ──────────┘
+#15 experiência (fechado) ─────────────────────────────────┐
+#16 regras de cálculo (grilling) ──────────────────────────┼─→ especificação pronta
+#17 modelo persistente (grilling) ─────────────────────────┤
+  ├─→ #18 detecção / primeiro uso ─────────────────────────┤
+  └─→ #19 migração / backups ──────────────────────────────┘
 ```
 
-## Ainda não especificado
+## Not yet specified
 
-- Critérios finais de aceitação e cobertura de testes: tornam-se precisos depois que experiência, cálculo, persistência e primeiro uso forem decididos.
-- Textos exatos, mensagens de erro e estados vazios: dependem do protótipo da experiência.
+- Critérios finais de aceitação e cobertura de testes: tornam-se precisos depois que cálculo, persistência e primeiro uso forem decididos.
+- Mensagens de erro e estados vazios finos da implementação (o tom e a sequência já estão no #15).
 - Como apresentar valores realizados sem categoria: depende das regras de comparação e do modelo persistente.
 
-## Fora de escopo
+## Out of scope
 
 - Implementar o wizard neste esforço de wayfinding.
-- Calcular um valor diário “seguro” a partir de renda, despesas fixas, faturas futuras ou reserva mínima.
+- Calcular um valor diário “seguro” a partir de renda, despesas fixas, faturas futuras ou reserva mínima. (Renda e contas entram como recorrência; não alimentam a média do diário.)
 - Incluir compras no cartão de crédito no orçamento mensal de gastos cotidianos.
 - Substituir automaticamente o planejamento pelos gastos reais.
