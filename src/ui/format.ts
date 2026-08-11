@@ -8,6 +8,22 @@ export function formatCents(cents: bigint): string {
   });
 }
 
+// Só os dígitos — "4.812,30", "−340,00" — porque no design as telas Hoje e
+// Lançar trazem o "R$" como rótulo próprio, em tamanho e cor diferentes do
+// número, e é ele que fica alinhado à coluna. Difere de formatCents em dois
+// pontos que importam: nada de símbolo embutido (nem do espaço rígido que a
+// opção `currency` insere) e o sinal negativo é o glifo − (U+2212), não o
+// hífen que o Intl usa. As telas secundárias, onde "R$" não é elemento
+// separado, seguem em formatCents.
+export function formatAmount(cents: bigint): string {
+  const digits = (Number(cents < 0n ? -cents : cents) / 100).toLocaleString('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+
+  return cents < 0n ? `−${digits}` : digits;
+}
+
 // "quarta, 5 de agosto" — explicit, not "Hoje" (SPEC.md §7). Builds the
 // Date from the 'YYYY-MM-DD' string's parts via Date.UTC and formats with
 // timeZone: 'UTC' so the day never shifts, matching the parser contract in
@@ -45,6 +61,51 @@ export function formatDateShort(dateStr: string, options: { withYear?: boolean }
     ...(options.withYear ? { year: 'numeric' as const } : {}),
     timeZone: 'UTC',
   }).format(date);
+}
+
+// Datas curtas do design da Tela Hoje. São três formas distintas porque cada
+// uma vive num espaço diferente: o cabeçalho tem a linha inteira, os marcos
+// têm um quarto da largura e o aviso de pendentes resume um intervalo.
+
+// "sáb, 8 ago" — cabeçalho da Tela Hoje, ao lado do wordmark.
+export function formatDateHeaderShort(dateStr: string): string {
+  const parts = dateParts(dateStr, { weekday: 'short', day: 'numeric', month: 'short' });
+  return `${parts.weekday}, ${parts.day} ${parts.month}`;
+}
+
+// "31/ago" — coluna de marco, onde "31 de ago" não caberia em 1/4 da tela.
+export function formatDateSlash(dateStr: string): string {
+  const parts = dateParts(dateStr, { day: '2-digit', month: 'short' });
+  return `${parts.day}/${parts.month}`;
+}
+
+// "4–7 ago" para dias do mesmo mês, "28 jul – 3 ago" quando ele vira. O mês
+// só se repete quando muda: o aviso é uma nota discreta, não um relatório.
+export function formatDayRange(first: string, last: string): string {
+  const a = dateParts(first, { day: 'numeric', month: 'short' });
+  const b = dateParts(last, { day: 'numeric', month: 'short' });
+
+  if (first === last) return `${a.day} ${a.month}`;
+  if (a.month === b.month) return `${a.day}–${b.day} ${b.month}`;
+  return `${a.day} ${a.month} – ${b.day} ${b.month}`;
+}
+
+// Mesma construção Date.UTC + timeZone: 'UTC' das funções acima, pela mesma
+// razão: 'YYYY-MM-DD' é uma data civil, e deixar o fuso local entrar aqui
+// deslocaria o dia. Devolve as partes já sem o ponto que o pt-BR põe no mês
+// abreviado ("ago." → "ago"), que o design não usa em nenhuma das três.
+function dateParts(
+  dateStr: string,
+  options: Intl.DateTimeFormatOptions,
+): Record<string, string> {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const date = new Date(Date.UTC(year as number, (month as number) - 1, day));
+
+  const parts: Record<string, string> = {};
+  for (const part of new Intl.DateTimeFormat('pt-BR', { ...options, timeZone: 'UTC' }).formatToParts(date)) {
+    parts[part.type] = part.value.replace(/\.$/, '').replace(/-feira$/, '');
+  }
+  return parts;
 }
 
 // "julho" — nome do mês por extenso, para o card de desvio da estimativa

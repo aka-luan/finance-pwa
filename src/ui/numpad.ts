@@ -65,35 +65,83 @@ export interface NumpadHandlers {
   onDigit(digit: string): void;
   onBackspace(): void;
   // The big add key, in the thumb zone (SPEC.md §7). Screens that take a
-  // single value leave it out and the cell stays empty.
+  // single value leave it out and get the plain 3-column keypad.
   onAdd?: () => void;
+}
+
+export interface Numpad {
+  element: HTMLDivElement;
+  // O valor sendo digitado mora dentro da tecla de adicionar, então quem
+  // controla o AmountField precisa empurrar cada mudança para cá. No teclado
+  // sem `onAdd` não há onde mostrar e a chamada não faz nada.
+  setBuffer(text: string): void;
 }
 
 // Numpad próprio em HTML: `inputmode` nativo não entrega um `+` acessível
 // e o teclado do sistema empurra o layout no iOS (SPEC.md §7).
-export function createNumpad(handlers: NumpadHandlers): HTMLDivElement {
-  const numpad = document.createElement('div');
-  numpad.className = 'numpad';
+export function createNumpad(handlers: NumpadHandlers): Numpad {
+  const element = document.createElement('div');
+  element.className = handlers.onAdd ? 'numpad numpad-com-adicionar' : 'numpad';
 
-  const addKey = (label: string, className: string, ariaLabel: string, onPress: () => void): void => {
+  const addKey = (label: string, ariaLabel: string, onPress: () => void): void => {
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = className;
+    btn.className = 'numpad-key';
     btn.textContent = label;
     btn.setAttribute('aria-label', ariaLabel);
     btn.addEventListener('click', onPress);
-    numpad.append(btn);
+    element.append(btn);
   };
 
   for (const digit of ['1', '2', '3', '4', '5', '6', '7', '8', '9']) {
-    addKey(digit, 'numpad-key', digit, () => handlers.onDigit(digit));
+    addKey(digit, digit, () => handlers.onDigit(digit));
   }
-  addKey('⌫', 'numpad-key', 'Apagar', () => handlers.onBackspace());
-  addKey('0', 'numpad-key', '0', () => handlers.onDigit('0'));
-  if (handlers.onAdd) {
-    const onAdd = handlers.onAdd;
-    addKey('+', 'numpad-key numpad-add', 'Adicionar à lista', () => onAdd());
+  // "00" antes do "0": valores redondos ("40,00", "1200,00") são a maioria do
+  // que se lança num dia, e digitar cada zero é o que mais custa na entrada
+  // cents-first. Dois addDigit em vez de um append de '00' para respeitar o
+  // MAX_DIGITS de createAmountField no dígito, não no par.
+  addKey('00', 'Dois zeros', () => {
+    handlers.onDigit('0');
+    handlers.onDigit('0');
+  });
+  addKey('0', '0', () => handlers.onDigit('0'));
+  addKey('⌫', 'Apagar', () => handlers.onBackspace());
+
+  if (!handlers.onAdd) {
+    return { element, setBuffer: () => {} };
   }
 
-  return numpad;
+  const onAdd = handlers.onAdd;
+
+  // Uma célula só, ocupando as quatro linhas da quarta coluna: é a tecla de
+  // maior alvo do teclado e fica sob o polegar. Mostra o valor digitado
+  // porque, com a lista já ocupando o meio da tela, não há um campo de valor
+  // separado — o buffer aparece aqui, dentro do botão que o consome.
+  const adicionarBtn = document.createElement('button');
+  adicionarBtn.type = 'button';
+  adicionarBtn.className = 'numpad-adicionar';
+  adicionarBtn.setAttribute('aria-label', 'Adicionar à lista');
+  adicionarBtn.addEventListener('click', () => onAdd());
+
+  const glifo = document.createElement('span');
+  glifo.className = 'numpad-adicionar-glifo';
+  glifo.textContent = '+';
+  glifo.setAttribute('aria-hidden', 'true');
+
+  const bufferEl = document.createElement('span');
+  bufferEl.className = 'numpad-adicionar-buffer';
+
+  const legenda = document.createElement('span');
+  legenda.className = 'numpad-adicionar-legenda';
+  legenda.textContent = 'adicionar';
+
+  adicionarBtn.append(glifo, bufferEl, legenda);
+  element.append(adicionarBtn);
+
+  return {
+    element,
+    setBuffer(text) {
+      bufferEl.textContent = text;
+    },
+  };
 }

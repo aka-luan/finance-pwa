@@ -255,5 +255,5 @@ function renderRecorrenciaForm(app: HTMLDivElement, existing?: Recurrence): void
 
   footer.append(cancelarBtn, salvarBtn);
 
-  app.append(title, kindToggle, labelInput, diaLabel, amount.input, numpad, errorEl, footer);
+  app.append(title, kindToggle, labelInput, diaLabel, amount.input, numpad.element, errorEl, footer);
 }

@@ -74,6 +74,6 @@ export function renderAcertarSaldo(app: HTMLDivElement): void {
 
   footer.append(voltarBtn, salvarBtn);
 
-  app.append(titleEl, hintEl, amount.input, notaEl, numpad, errorEl, footer);
+  app.append(titleEl, hintEl, amount.input, notaEl, numpad.element, errorEl, footer);
   amount.input.focus();
 }

@@ -1,9 +1,58 @@
+/* Tokens do design handoff (docs/design-handoff/README.md). Tema escuro
+   único: o app é para consulta rápida, muitas vezes de noite, e um segundo
+   tema seria uma segunda superfície para manter em dia sem ninguém pedir. */
 :root {
-  --bg: #0b3d2e;
-  --fg: #f4f4f0;
-  --fg-muted: #b9c9c2;
-  --accent: #2fae70;
-  font-family: system-ui, sans-serif;
+  --bg: #0d0f10;
+
+  /* Três superfícies elevadas, não uma: card, pill e tecla ficam lado a
+     lado na mesma tela e precisam se distinguir sem borda extra. */
+  --surface-card: #14181a;
+  --surface-pill: #171b1d;
+  --surface-key: #191d1f;
+  --surface-aviso: #101618;
+
+  --border: #1e2325;
+  --border-key: #23282b;
+  --border-control: #262c2f;
+  --border-aviso: #23303a;
+
+  --fg: #e6e9ea;
+  --fg-hero: #f2f5f6;
+  --fg-item: #dfe4e6;
+  --fg-saldo: #b9c2c6;
+  --fg-secundario: #8d979c;
+  --fg-secundario-claro: #a8b2b7;
+  --fg-terciario: #7f888d;
+  --fg-muted: #6e777c;
+  --fg-fraco: #5a6266;
+  --fg-sobre-claro: #4a5153;
+  --fg-placeholder: #4d565c;
+
+  /* Âmbar = "isto ainda não aconteceu": a simulação da Tela Hoje e as
+     parcelas futuras de uma compra. Não usar para mais nada, senão para de
+     significar isso. */
+  --ambar: #e8c07a;
+  --ambar-bg: #2a2418;
+  --ambar-border: #5c4a26;
+
+  /* Vermelho dessaturado para saldo negativo — informação, não alarme. */
+  --negativo: #d99a8c;
+
+  --acao: #2f6d7e;
+  --acao-fg: #f2f8fa;
+  --acao-border: #46707f;
+  --acao-texto: #6e8891;
+  --acao-texto-claro: #9fb2ba;
+
+  --inverso-bg: #e9edee;
+  --inverso-fg: #0d0f10;
+
+  --lado: 22px;
+
+  --sans: 'IBM Plex Sans', system-ui, sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+  font-family: var(--sans);
   color-scheme: dark;
 }
 
@@ -16,6 +65,15 @@
    pinch-zoom and scrolling elsewhere are untouched. */
 button {
   touch-action: manipulation;
+  font-family: inherit;
+}
+
+input {
+  font-family: inherit;
+}
+
+input::placeholder {
+  color: var(--fg-placeholder);
 }
 
 body {
@@ -24,239 +82,482 @@ body {
   color: var(--fg);
 }
 
+/* Todo valor em dígitos usa a mono com tabular-nums: é o que mantém as
+   colunas de marcos e a lista de lançamentos alinhadas dígito a dígito. */
+.hoje-hero-numero,
+.saldo-valor,
+.marco-valor,
+.marco-delta,
+.pior-valor,
+.simular-input,
+.item-valor,
+.lancar-total-valor,
+.numpad-adicionar-buffer {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Saldo negativo, em qualquer lugar da interface. */
+.valor-negativo {
+  color: var(--negativo);
+}
+
 #app {
   min-height: 100vh;
-  padding: env(safe-area-inset-top) 1rem env(safe-area-inset-bottom);
   display: flex;
   flex-direction: column;
+}
+
+/* O padding de topo do design (62–64px) já é a folga da barra de status;
+   em aparelhos com notch o recorte é maior, daí o max() em vez de somar. */
+.screen {
+  padding: max(24px, env(safe-area-inset-top)) var(--lado) max(24px, env(safe-area-inset-bottom));
+  flex: 1;
 }
 
 /* Tela Hoje */
 
 .screen-hoje {
-  justify-content: flex-start;
-  align-items: center;
-  gap: 1rem;
-  text-align: center;
-  padding-top: 2rem;
+  padding-top: max(64px, calc(env(safe-area-inset-top) + 16px));
+  /* Espaço para o FAB, que é fixo e não empurra o conteúdo. */
+  padding-bottom: calc(110px + env(safe-area-inset-bottom));
 }
 
-.pode-gastar {
-  font-size: 2.25rem;
-  font-weight: 700;
-  margin: 0;
-}
-
-.saldo {
-  font-size: 1rem;
-  color: var(--fg-muted);
-  margin: 0;
-}
-
-.btn-lancar {
-  margin-top: 2rem;
-  padding: 1rem 2.5rem;
-  font-size: 1.25rem;
-  border-radius: 999px;
-  border: none;
-  background: var(--accent);
-  color: #06251b;
-  font-weight: 700;
-}
-
-/* Marcos, pior momento e simulação (SPEC.md §6) */
-
-.marcos,
-.pior-momento {
-  width: 100%;
-  text-align: left;
-}
-
-.marcos-titulo,
-.pior-titulo {
-  font-size: 0.85rem;
-  color: var(--fg-muted);
-  margin: 0 0 0.25rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.marcos-lista {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.marco-item {
-  padding: 0.35rem 0;
-  border-bottom: 1px solid rgba(244, 244, 240, 0.08);
-}
-
-.marco-item:last-child {
-  border-bottom: none;
-}
-
-.marco-topo,
-.marco-sub {
+.hoje-topo {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 0.5rem;
+  margin-bottom: 26px;
 }
 
+.hoje-wordmark {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+
+.hoje-data {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--fg-muted);
+}
+
+.hoje-hero {
+  margin-bottom: 22px;
+}
+
+.hoje-hero-label {
+  font-size: 13px;
+  color: var(--fg-secundario);
+  letter-spacing: 0.01em;
+  margin: 0 0 6px;
+}
+
+.hoje-hero-valor {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.hoje-hero-moeda {
+  font-family: var(--mono);
+  font-size: 19px;
+  font-weight: 500;
+  color: var(--fg-muted);
+}
+
+.hoje-hero-numero {
+  font-size: 58px;
+  line-height: 1;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--fg-hero);
+}
+
+/* Sem estimativa (ou falha ao carregar) o hero vira frase: o "R$" some,
+   porque "R$ Sem estimativa diária ainda" não é uma linha que exista. */
+.hoje-hero-sem-valor .hoje-hero-moeda {
+  display: none;
+}
+
+.hoje-hero-sem-valor .hoje-hero-numero {
+  font-family: var(--sans);
+  font-size: 19px;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--fg-secundario);
+}
+
+.saldo-linha {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 22px;
+}
+
+.saldo-label {
+  font-size: 13px;
+  color: var(--fg-secundario);
+}
+
+.saldo-valor {
+  font-size: 17px;
+  font-weight: 500;
+  color: var(--fg-saldo);
+}
+
+/* Marcos: quatro colunas iguais (SPEC.md §6). Lado a lado, a curva do ano
+   se lê de relance; empilhados, viram uma lista que ninguém percorre. */
+.marcos {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.marco {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+/* Altura fixa de duas linhas: "fim deste mês" quebra e "3 meses" não, e sem
+   isso os valores das quatro colunas não ficariam na mesma linha de base. */
 .marco-label {
-  font-size: 0.95rem;
+  font-size: 10.5px;
+  line-height: 1.25;
+  color: var(--fg-terciario);
+  letter-spacing: 0.01em;
+  height: 26px;
+}
+
+.marco-valor {
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.marco-delta {
+  font-size: 11px;
+  letter-spacing: -0.01em;
+  color: var(--ambar);
+  min-height: 15px;
 }
 
 .marco-data {
-  color: var(--fg-muted);
-  font-size: 0.8rem;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--fg-fraco);
+  letter-spacing: 0.04em;
 }
 
-.marco-valor,
-.pior-valor {
-  font-weight: 600;
+/* Nas telas mais estreitas (iPhone SE/mini, 375px) um saldo negativo de
+   quatro dígitos — "−2.214,07", nove caracteres — não cabe no quarto de
+   largura que o design reserva a cada marco, e as duas últimas colunas se
+   encostam. O tamanho do handoff vale a partir de ~390px; abaixo disso as
+   quatro colunas continuam sendo o certo, só com o dígito um pouco menor. */
+@media (max-width: 390px) {
+  .marcos {
+    gap: 8px;
+  }
+
+  .marco-valor {
+    font-size: 13.5px;
+  }
 }
 
-.pior-valor {
-  font-size: 1rem;
-  margin: 0;
-}
-
-/* Simulando: delta mostrado em destaque, sem cor de alarme — a tela não
-   deve parecer estar cobrando o usuário (mesma lógica de .pendentes). */
-.marco-delta,
-.pior-delta {
-  color: var(--accent);
-  font-size: 0.85rem;
-}
-
-.pior-delta {
-  margin: 0.15rem 0 0;
-}
-
-.simular {
-  width: 100%;
+.pior-momento {
   display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  margin-top: 0.5rem;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  margin-bottom: 20px;
+}
+
+.pior-label,
+.pior-data {
+  font-size: 12.5px;
+  color: var(--fg-secundario);
+}
+
+.pior-valor {
+  font-size: 13.5px;
+  font-weight: 500;
+}
+
+.pior-era {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ambar);
+}
+
+/* "E se eu gastar ___": a borda acende em âmbar enquanto há valor, que é o
+   único sinal de que os marcos acima já não são o saldo real (SPEC.md §6). */
+.simular {
+  background: var(--surface-card);
+  border: 1px solid #20262a;
+  border-radius: 14px;
+  padding: 16px 16px 14px;
+  margin-bottom: 16px;
+}
+
+.simular-ativo {
+  border-color: var(--ambar-border);
+}
+
+.simular-linha {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .simular-label {
-  font-size: 0.85rem;
+  font-size: 14px;
+  color: var(--fg-secundario-claro);
+  white-space: nowrap;
+}
+
+.simular-campo {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex: 1;
+  justify-content: flex-end;
+}
+
+.simular-moeda {
+  font-family: var(--mono);
+  font-size: 14px;
   color: var(--fg-muted);
 }
 
 .simular-input {
+  width: 130px;
+  background: transparent;
+  border: none;
+  outline: none;
+  text-align: right;
+  font-size: 26px;
+  font-weight: 600;
+  color: var(--ambar);
+  padding: 0;
+}
+
+.simular-chips {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.simular-chip {
+  flex: 1;
+  background: var(--surface-card);
+  border: 1px solid var(--border-control);
+  border-radius: 8px;
+  padding: 7px 0;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--fg-secundario);
+}
+
+.simular-chip.chip-ativo {
+  background: var(--ambar-bg);
+  color: var(--ambar);
+}
+
+/* Aviso de dias pendentes: discreto de propósito. Nada de vermelho, nada
+   de contador de ofensiva — cobrança faz o usuário parar de abrir o app
+   (SPEC.md §6). O filete azul-petróleo à esquerda é o único destaque. */
+
+.pendentes {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.pendentes-aviso {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   width: 100%;
-  padding: 0.75rem;
-  font-size: 1.1rem;
-  font-family: inherit;
-  border-radius: 0.75rem;
-  border: 1px solid rgba(244, 244, 240, 0.2);
-  background: rgba(244, 244, 240, 0.05);
-  color: var(--fg);
+  background: var(--surface-aviso);
+  border: 1px solid var(--border-aviso);
+  border-left: 2px solid var(--acao-border);
+  border-radius: 10px;
+  padding: 13px 14px;
+  text-align: left;
 }
 
-/* Aviso de desvio da estimativa (SPEC.md §9): mesma linguagem visual do
-   card de confirmação de restauração em Configurações (borda sutil, sem
-   vermelho) — é uma pergunta, não uma cobrança. */
-.estimativa-aviso:not(:empty) {
-  border: 1px solid var(--accent);
-  border-radius: 0.75rem;
-  padding: 1rem;
-  margin-top: 0.75rem;
+.pendentes-texto {
+  font-size: 13.5px;
+  color: var(--acao-texto-claro);
 }
 
-.estimativa-aviso p {
-  margin: 0 0 0.75rem;
-  font-size: 0.95rem;
-  line-height: 1.4;
+.pendentes-intervalo {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--acao-texto);
+}
+
+.pendentes-acertar {
+  background: none;
+  border: none;
+  color: var(--acao-texto);
+  font-size: 12.5px;
+  padding: 4px 0;
+  text-decoration: underline;
+  text-underline-offset: 0.3em;
+}
+
+/* Acessos secundários (linha do tempo, configurações): empurrados para o
+   rodapé pelo espaçador flexível, com folga à direita para não ficarem sob
+   o FAB, que é fixo. */
+.hoje-secundario {
+  margin-top: auto;
+  padding-top: 20px;
+  padding-right: 130px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
 }
 
 .btn-config {
   background: none;
   border: none;
   color: var(--fg-muted);
-  font-size: 0.9rem;
-  text-decoration: underline;
-  padding: 0.5rem;
-}
-
-/* Aviso de dias pendentes: discreto de propósito. Nada de vermelho, nada
-   de contador de ofensiva — cobrança faz o usuário parar de abrir o app
-   (SPEC.md §6). */
-
-.pendentes {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.25rem;
-  margin-top: 1.5rem;
-}
-
-.pendentes-aviso,
-.pendentes-acertar {
-  background: none;
-  border: none;
-  color: var(--fg-muted);
-  font-size: 0.95rem;
-  padding: 0.5rem 0.75rem;
+  font-size: 12.5px;
+  padding: 4px 0;
+  text-align: left;
   text-decoration: underline;
   text-underline-offset: 0.3em;
 }
 
+/* FAB "Lançar": fixo no canto inferior direito, na zona do polegar. */
+.btn-lancar {
+  position: fixed;
+  right: var(--lado);
+  bottom: max(24px, calc(env(safe-area-inset-bottom) + 22px));
+  height: 60px;
+  padding: 0 26px;
+  border-radius: 30px;
+  background: var(--inverso-bg);
+  border: none;
+  color: var(--inverso-fg);
+  font-size: 16px;
+  font-weight: 600;
+  box-shadow: 0 10px 30px rgb(0 0 0 / 55%);
+}
+
+/* Aviso de desvio da estimativa (SPEC.md §9): mesma linguagem visual do
+   card de confirmação de restauração em Configurações (borda sutil, sem
+   vermelho) — é uma pergunta, não uma cobrança. */
+.estimativa-aviso:not(:empty) {
+  background: var(--surface-card);
+  border: 1px solid var(--border-control);
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 16px;
+}
+
+.estimativa-aviso p {
+  margin: 0 0 12px;
+  font-size: 13.5px;
+  line-height: 1.4;
+  color: var(--fg-secundario-claro);
+}
+
 .toast {
   position: fixed;
-  bottom: 1.5rem;
-  left: 1rem;
-  right: 1rem;
-  background: #06251b;
-  border: 1px solid var(--accent);
-  border-radius: 0.75rem;
-  padding: 0.75rem 1rem;
+  left: var(--lado);
+  right: var(--lado);
+  bottom: max(24px, calc(env(safe-area-inset-bottom) + 22px));
+  background: var(--surface-pill);
+  border: 1px solid var(--border-control);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 13.5px;
+  color: var(--fg-secundario-claro);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
+  gap: 16px;
+}
+
+/* Em Hoje o toast dividiria a faixa de baixo com o FAB, que é fixo na
+   mesma altura — sobe para acima dele. */
+.screen-hoje .toast {
+  bottom: max(96px, calc(env(safe-area-inset-bottom) + 94px));
 }
 
 .btn-desfazer {
   background: none;
   border: none;
-  color: var(--accent);
-  font-weight: 700;
-  font-size: 1rem;
+  color: var(--acao-texto-claro);
+  font-weight: 600;
+  font-size: 13.5px;
+  text-decoration: underline;
+  text-underline-offset: 0.3em;
 }
 
 /* Tela Lançar */
 
-/* Configurações e Acertar saldo reusam o layout de Lançar e os mesmos
-   botões primário/secundário — são os mesmos dois controles, definidos
-   uma vez só aqui. */
-.screen-lancar,
-.screen-config,
-.screen-acertar {
-  gap: 0.75rem;
-  padding-top: 1.5rem;
-}
-
-.lancar-header {
+.screen-lancar {
+  padding-top: max(62px, calc(env(safe-area-inset-top) + 14px));
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+}
+
+.lancar-topo {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-height: 24px;
+  margin-bottom: 14px;
 }
 
 .lancar-posicao {
-  font-size: 0.9rem;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
   color: var(--fg-muted);
-  margin: 0;
+  background: var(--surface-pill);
+  border-radius: 6px;
+  padding: 4px 9px;
+}
+
+/* Altura reservada: Diário mostra data, Cartão mostra dois seletores, e
+   sem o mínimo a tela inteira subiria e desceria na troca de pill. */
+.lancar-contexto {
+  min-height: 64px;
+  margin-bottom: 14px;
+}
+
+.lancar-data-label {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--fg-terciario);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 5px;
 }
 
 .lancar-date {
-  font-size: 1.1rem;
+  font-size: 27px;
   font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--fg-hero);
   margin: 0;
 }
 
@@ -266,151 +567,300 @@ body {
   text-transform: uppercase;
 }
 
-.valor-input {
-  width: 100%;
-  font-size: 2.5rem;
-  font-weight: 700;
-  text-align: right;
-  background: none;
-  border: none;
+.cartao-pickers {
+  display: flex;
+  gap: 10px;
+}
+
+/* Mesma armadilha de .lancar-lista-area: o `display: flex` de autor vence o
+   `[hidden] { display: none }` do navegador, então os seletores de cartão
+   apareciam junto com a data nos modos de lista. */
+.cartao-pickers[hidden] {
+  display: none;
+}
+
+.cartao-picker {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  flex: 1;
+  text-align: left;
+  background: var(--surface-card);
+  border: 1px solid var(--border-control);
+  border-radius: 10px;
+  padding: 9px 12px;
+}
+
+/* O nome do cartão é mais longo que "3x", então leva a fração maior. */
+.cartao-picker:first-child {
+  flex: 1.4;
+}
+
+.cartao-picker-label {
+  font-size: 10.5px;
+  color: var(--fg-terciario);
+  margin-bottom: 3px;
+}
+
+.cartao-picker-valor {
+  font-size: 16px;
+  font-weight: 600;
   color: var(--fg);
-  caret-color: transparent;
+}
+
+.cartao-picker-parcelas {
+  font-family: var(--mono);
+}
+
+.lancar-divisor {
+  border-top: 1px solid var(--border);
+  margin-bottom: 10px;
+}
+
+.lancar-lista-area {
+  min-height: 132px;
+  flex: 0 1 auto;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.lancar-espacador {
+  flex: 1;
+}
+
+/* `display: flex` acima vence a regra `[hidden] { display: none }` do
+   navegador — estilo de autor sempre ganha do user-agent, independente de
+   especificidade — então sem isto a área ficaria visível em Cartão. */
+.lancar-lista-area[hidden] {
+  display: none;
 }
 
 .lancar-lista {
   list-style: none;
   margin: 0;
   padding: 0;
-  max-height: 30vh;
-  overflow-y: auto;
 }
 
-.lancar-lista li {
+.lancar-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.5rem 0;
-  border-bottom: 1px solid rgba(244, 244, 240, 0.1);
+  padding: 6px 0;
+}
+
+.item-numero {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--fg-fraco);
+  width: 22px;
+}
+
+.item-valor {
+  font-size: 19px;
+  font-weight: 500;
+  color: var(--fg-item);
+  flex: 1;
+  text-align: right;
 }
 
 .item-remover {
-  background: none;
-  border: none;
-  color: var(--fg-muted);
-  font-size: 1.25rem;
-  padding: 0 0.5rem;
+  margin-left: 14px;
+  width: 26px;
+  height: 26px;
+  border-radius: 13px;
+  background: var(--surface-pill);
+  border: 1px solid var(--border-control);
+  color: var(--fg-secundario);
+  font-size: 13px;
+  line-height: 1;
+  padding: 0;
 }
 
-.lancar-total {
-  text-align: right;
-  color: var(--fg-muted);
+.lancar-vazio {
+  font-size: 13px;
+  color: var(--fg-fraco);
+  padding: 6px 0;
   margin: 0;
 }
 
+.lancar-total-linha {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.lancar-total-label {
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--fg-terciario);
+}
+
+.lancar-total-valor {
+  font-size: 23px;
+  font-weight: 600;
+  color: var(--fg-hero);
+}
+
+/* Mesma cor da simulação de Hoje: parcela é consequência futura, não um
+   valor já gravado. Altura reservada para a linha não empurrar o teclado. */
+.lancar-consequencia {
+  min-height: 20px;
+  padding-top: 6px;
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ambar);
+}
+
+.kind-toggle {
+  display: flex;
+  gap: 6px;
+  margin: 12px 0 8px;
+}
+
+.kind-toggle button {
+  flex: 1;
+  background: var(--surface-card);
+  border: 1px solid var(--border-control);
+  border-radius: 9px;
+  padding: 9px 0;
+  font-size: 13px;
+  color: var(--fg-secundario);
+}
+
+.kind-toggle button.kind-ativo {
+  background: var(--inverso-bg);
+  border-color: var(--inverso-bg);
+  color: var(--inverso-fg);
+  font-weight: 600;
+}
+
+/* Numpad próprio (SPEC.md §7). Três colunas de teclas; a quarta, quando a
+   tela tem "adicionar", é uma tecla só ocupando as quatro linhas. */
 .numpad {
-  margin-top: auto;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 0.5rem;
+  grid-auto-rows: 52px;
+  gap: 7px;
 }
 
-.numpad-key {
-  padding: 1.1rem 0;
-  font-size: 1.5rem;
-  border-radius: 0.75rem;
-  border: none;
-  background: rgba(244, 244, 240, 0.08);
-  color: var(--fg);
+.numpad-com-adicionar {
+  grid-template-columns: 1fr 1fr 1fr 1.25fr;
+  grid-template-rows: repeat(4, 52px);
 }
 
-.numpad-add {
-  grid-row: span 1;
-  background: var(--accent);
-  color: #06251b;
-  font-weight: 700;
+/* Cartão é um valor só, sem lista para onde adicionar: a coluna sai e as
+   teclas voltam a ocupar a largura toda. */
+.numpad-sem-adicionar {
+  grid-template-columns: repeat(3, 1fr);
 }
 
-.lancar-erro {
-  color: #ff8a80;
-  margin: 0;
-  min-height: 1.2em;
-}
-
-.lancar-diario,
-.lancar-cartao {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-/* display: flex above beats the browser's own `[hidden] { display: none }`
-   rule — author styles always win over user-agent ones, regardless of
-   specificity — so the inactive Tipo section stayed visible without this. */
-.lancar-diario[hidden],
-.lancar-cartao[hidden] {
+.numpad-sem-adicionar .numpad-adicionar {
   display: none;
 }
 
-.cartao-select {
-  width: 100%;
-  padding: 0.75rem;
-  font-size: 1rem;
-  font-family: inherit;
-  border-radius: 0.75rem;
-  border: 1px solid rgba(244, 244, 240, 0.2);
-  background: rgba(244, 244, 240, 0.05);
+.numpad-key {
+  background: var(--surface-key);
+  border: 1px solid var(--border-key);
+  border-radius: 10px;
+  font-family: var(--mono);
+  font-size: 21px;
+  font-weight: 500;
   color: var(--fg);
 }
 
-.cartao-preview {
-  color: var(--fg-muted);
-  min-height: 1.2em;
-  margin: 0;
-}
-
-/* Tela Acertar saldo */
-
-.acertar-titulo {
-  font-size: 1.1rem;
+.numpad-adicionar {
+  grid-column: 4;
+  grid-row: 1 / span 4;
+  background: var(--inverso-bg);
+  border: none;
+  border-radius: 12px;
+  color: var(--inverso-fg);
+  font-size: 15px;
   font-weight: 600;
-  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
 }
 
-.acertar-hint,
-.acertar-nota {
-  color: var(--fg-muted);
-  font-size: 0.9rem;
-  margin: 0;
+.numpad-adicionar-glifo {
+  font-size: 26px;
+  line-height: 1;
+  font-weight: 400;
 }
 
-/* Rodapé de ação, comum a Lançar e Acertar saldo */
+.numpad-adicionar-buffer {
+  font-size: 15px;
+}
 
+.numpad-adicionar-legenda {
+  font-size: 11px;
+  color: var(--fg-sobre-claro);
+  letter-spacing: 0.06em;
+}
+
+.lancar-erro {
+  color: var(--negativo);
+  font-size: 13px;
+  margin: 8px 0 0;
+  min-height: 1.2em;
+}
+
+/* Rodapé de ação, comum a Lançar, Acertar saldo e Configurações */
+
+/* `margin-top: auto` ancora o rodapé no fim da tela nas telas secundárias,
+   que não têm espaçador próprio. Em Lançar o espaçador já consumiu a sobra,
+   então a margem automática fica em zero e não muda nada. */
 .tela-footer {
   display: flex;
-  gap: 0.5rem;
-  padding: 0.75rem 0 0.5rem;
+  align-items: center;
+  gap: 12px;
+  margin-top: auto;
+  padding-top: 6px;
 }
 
 .tela-footer button,
 .config-acoes button {
   flex: 1;
-  padding: 1rem;
-  font-size: 1rem;
-  border-radius: 0.75rem;
-  border: none;
-  font-weight: 700;
+  height: 52px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
 }
 
 .btn-secundario,
 .btn-cancelar {
-  background: rgba(244, 244, 240, 0.08);
-  color: var(--fg);
+  background: var(--surface-card);
+  border: 1px solid var(--border-control);
+  color: var(--fg-secundario-claro);
 }
 
 .btn-salvar,
 .btn-confirmar {
-  background: var(--accent);
-  color: #06251b;
+  background: var(--acao);
+  border: none;
+  color: var(--acao-fg);
+}
+
+/* Em Lançar, "Não gastei nada" é texto puro ao lado de um Salvar largo:
+   é a saída para o dia em que não houve gasto, não uma ação de igual peso. */
+.screen-lancar .btn-secundario {
+  flex: 0 0 auto;
+  background: none;
+  border: none;
+  padding: 0 14px;
+  color: var(--fg-secundario);
+  font-size: 13.5px;
+  font-weight: 400;
 }
 
 .tela-footer button:disabled,
@@ -418,24 +868,75 @@ body {
   opacity: 0.6;
 }
 
-/* Tela Configurações */
+/* Telas secundárias — Acertar saldo, Configurações, Recorrências, Linha do
+   tempo. Recolorização apenas: o layout atual continua, com a paleta e as
+   fontes novas. O desenho real delas vem de outra rodada
+   (docs/design-handoff/design-request-secondary-elements.md). */
 
+.screen-config,
+.screen-acertar,
+.screen-recorrencias,
+.screen-recorrencia-form,
+.screen-linha-tempo {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.acertar-titulo,
 .config-title {
-  font-size: 1.5rem;
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--fg-hero);
   margin: 0;
 }
 
-.config-secao {
-  font-size: 1rem;
-  color: var(--fg-muted);
-  margin: 1rem 0 0;
-}
-
-.config-explicacao {
-  color: var(--fg-muted);
-  font-size: 0.9rem;
+.acertar-hint,
+.acertar-nota,
+.config-explicacao,
+.config-status {
+  color: var(--fg-secundario);
+  font-size: 13px;
   line-height: 1.4;
   margin: 0;
+}
+
+
+.config-secao {
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-family: var(--mono);
+  color: var(--fg-terciario);
+  margin: 12px 0 0;
+}
+
+/* Campo de valor das telas que ainda têm um (Acertar saldo, Recorrências).
+   O anel de foco do navegador é ruído aqui: o campo é readOnly e recebe
+   foco na abertura só para o iOS não abrir o teclado do sistema
+   (numpad.ts) — quem digita é o numpad logo abaixo, não o teclado. */
+.valor-input {
+  width: 100%;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 34px;
+  font-weight: 600;
+  text-align: right;
+  background: var(--surface-card);
+  border: 1px solid var(--border-control);
+  border-radius: 12px;
+  padding: 10px 14px;
+  color: var(--fg-hero);
+  caret-color: transparent;
+  outline: none;
+}
+
+.config-status {
+  min-height: 1.2em;
+}
+
+.config-status-erro {
+  color: var(--negativo);
 }
 
 .btn-exportar,
@@ -443,24 +944,27 @@ body {
 .btn-bloco {
   display: block;
   width: 100%;
-  padding: 1rem;
-  font-size: 1rem;
-  font-weight: 700;
-  font-family: inherit;
-  border-radius: 0.75rem;
+  height: 52px;
+  font-size: 15px;
+  font-weight: 600;
+  border-radius: 12px;
   border: none;
   text-align: center;
 }
 
-.btn-exportar,
-.btn-bloco {
-  background: var(--accent);
-  color: #06251b;
+.btn-exportar {
+  background: var(--acao);
+  color: var(--acao-fg);
 }
 
+/* Navegação para uma subtela não é ação primária: quatro botões cheios de
+   teal na mesma tela tirariam do "Exportar backup" o destaque que a cor
+   existe para dar. */
+.btn-bloco,
 .btn-restaurar {
-  background: rgba(244, 244, 240, 0.08);
-  color: var(--fg);
+  background: var(--surface-card);
+  border: 1px solid var(--border-control);
+  color: var(--fg-secundario-claro);
 }
 
 .btn-exportar:disabled {
@@ -472,50 +976,35 @@ body {
   display: none;
 }
 
-.config-status {
-  margin: 0;
-  min-height: 1.2em;
-  color: var(--fg-muted);
-  font-size: 0.9rem;
-}
-
-.config-status-erro {
-  color: #ff8a80;
-}
-
 .config-confirmacao:not(:empty) {
-  border: 1px solid var(--accent);
-  border-radius: 0.75rem;
-  padding: 1rem;
+  background: var(--surface-card);
+  border: 1px solid var(--border-control);
+  border-radius: 12px;
+  padding: 14px;
 }
 
 .config-confirmacao p {
-  margin: 0 0 0.75rem;
-  font-size: 0.95rem;
+  margin: 0 0 12px;
+  font-size: 13.5px;
   line-height: 1.4;
+  color: var(--fg-secundario-claro);
 }
 
 .config-acoes {
   display: flex;
-  gap: 0.5rem;
+  gap: 12px;
 }
 
 .btn-voltar {
   margin-top: auto;
-  padding: 0.75rem;
+  padding: 12px 0;
   background: none;
   border: none;
   color: var(--fg-muted);
-  font-size: 1rem;
+  font-size: 13.5px;
 }
 
 /* Tela Recorrências */
-
-.screen-recorrencias,
-.screen-recorrencia-form {
-  gap: 0.75rem;
-  padding-top: 1.5rem;
-}
 
 .recorrencias-lista {
   list-style: none;
@@ -528,9 +1017,9 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.5rem;
-  padding: 0.5rem 0;
-  border-bottom: 1px solid rgba(244, 244, 240, 0.1);
+  gap: 8px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
 }
 
 .recorrencia-inativa {
@@ -542,79 +1031,54 @@ body {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 0.15rem;
+  gap: 2px;
   background: none;
   border: none;
   color: var(--fg);
-  padding: 0.25rem 0;
+  padding: 4px 0;
   text-align: left;
 }
 
 .recorrencia-label {
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 500;
 }
 
 .recorrencia-detalhe {
-  color: var(--fg-muted);
-  font-size: 0.85rem;
+  color: var(--fg-secundario);
+  font-size: 12px;
 }
 
 .recorrencia-desativar {
   background: none;
   border: none;
   color: var(--fg-muted);
-  font-size: 0.85rem;
+  font-size: 12.5px;
   text-decoration: underline;
-  padding: 0.5rem;
-}
-
-.kind-toggle {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.kind-toggle button {
-  flex: 1;
-  padding: 0.75rem;
-  font-size: 1rem;
-  border-radius: 0.75rem;
-  border: none;
-  background: rgba(244, 244, 240, 0.08);
-  color: var(--fg);
-}
-
-.kind-toggle button.kind-ativo {
-  background: var(--accent);
-  color: #06251b;
-  font-weight: 700;
+  text-underline-offset: 0.3em;
+  padding: 8px 0;
 }
 
 .recorrencia-label-input,
 .recorrencia-dia-input {
   width: 100%;
-  padding: 0.75rem;
-  font-size: 1rem;
-  font-family: inherit;
-  border-radius: 0.75rem;
-  border: 1px solid rgba(244, 244, 240, 0.2);
-  background: rgba(244, 244, 240, 0.05);
+  padding: 12px;
+  font-size: 15px;
+  border-radius: 10px;
+  border: 1px solid var(--border-control);
+  background: var(--surface-card);
   color: var(--fg);
 }
 
 .recorrencia-dia-label {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  color: var(--fg-muted);
-  font-size: 0.85rem;
+  gap: 5px;
+  color: var(--fg-terciario);
+  font-size: 12px;
 }
 
 /* Tela Linha do tempo (issue #9) */
-
-.screen-linha-tempo {
-  gap: 0.5rem;
-  padding-top: 1.5rem;
-}
 
 .linha-tempo-lista {
   flex: 1;
@@ -626,12 +1090,13 @@ body {
   position: sticky;
   top: 0;
   background: var(--bg);
-  margin: 0.75rem 0 0.25rem;
-  padding: 0.25rem 0;
-  font-size: 0.85rem;
-  color: var(--fg-muted);
+  margin: 14px 0 4px;
+  padding: 4px 0;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--fg-terciario);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.1em;
 }
 
 .linha-tempo-dias {
@@ -644,23 +1109,26 @@ body {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 0.5rem;
-  padding: 0.3rem 0;
-  border-bottom: 1px solid rgba(244, 244, 240, 0.08);
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
 }
 
 .linha-tempo-data {
-  color: var(--fg-muted);
-  font-size: 0.85rem;
+  color: var(--fg-secundario);
+  font-size: 12.5px;
 }
 
 .linha-tempo-saldo {
-  font-weight: 600;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 14px;
+  font-weight: 500;
 }
 
 /* Dias projetados: mesmo dado, peso visual menor — é estimativa, não o
    real já lançado (regra "real vence projeção", SPEC.md §4). */
 .linha-tempo-projetado .linha-tempo-saldo {
   font-weight: 400;
-  color: var(--fg-muted);
+  color: var(--fg-secundario);
 }

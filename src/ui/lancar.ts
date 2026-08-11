@@ -6,9 +6,10 @@ import {
   previewInstallments,
   settleDay,
   todayBelem,
+  type Card,
 } from '../db/queries.mjs';
 import { debounce } from './debounce';
-import { formatCents, formatDateHeader, formatDateShort } from './format';
+import { formatAmount, formatDateHeader, formatDateSlash } from './format';
 import { renderHoje } from './hoje';
 import { createAmountField, createNumpad } from './numpad';
 import { renderUndoToast, type UndoState } from './undo';
@@ -31,6 +32,13 @@ export interface LancarOptions {
   undo?: UndoState;
 }
 
+// Parcelamentos que a tela oferece. O botão cicla a lista em vez de abrir um
+// campo numérico: parcela é escolha de dois ou três toques, não de digitação.
+// Vai além do 12 do design porque o schema aceita até 48 e trocar o campo por
+// um ciclo não deveria tirar do usuário um parcelamento que ele já podia
+// lançar — os valores altos são os que se usa na prática (24x, 36x, 48x).
+const PARCELAS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 18, 24, 36, 48];
+
 // Tela Lançar (SPEC.md §7): quatro modos — Diário, Saída, Entrada (lista de
 // valores, issue #12) e Cartão (compra parcelada, issue #7). Diário/Saída/
 // Entrada compartilham a mesma seção de lista-de-valores; só o `kind`
@@ -51,86 +59,146 @@ export function renderLancar(app: HTMLDivElement, options: LancarOptions = {}): 
 
   let tipo: 'diario' | 'saida' | 'entrada' | 'cartao' = 'diario';
   const items: Item[] = [];
+  const isLista = (t: typeof tipo): boolean => t !== 'cartao';
+
+  // --- Topo: posição na fila -------------------------------------------
+
+  const topo = document.createElement('div');
+  topo.className = 'lancar-topo';
+
+  if (recovery) {
+    const posicaoEl = document.createElement('span');
+    posicaoEl.className = 'lancar-posicao';
+    posicaoEl.textContent = `${recovery.index + 1} de ${recovery.days.length}`;
+    topo.append(posicaoEl);
+  }
+
+  // --- Contexto: que dia (ou que cartão) se está lançando ---------------
 
   // Data grande e explícita mesmo em recuperação: a posição diz onde o
   // usuário está na fila, mas o risco de erro da tela é justamente perder
   // de vista qual dia se está lançando (SPEC.md §7).
-  const header = document.createElement('div');
-  header.className = 'lancar-header';
+  const contexto = document.createElement('div');
+  contexto.className = 'lancar-contexto';
 
-  if (recovery) {
-    const posicaoEl = document.createElement('p');
-    posicaoEl.className = 'lancar-posicao';
-    posicaoEl.textContent = `${recovery.index + 1} de ${recovery.days.length}`;
-    header.append(posicaoEl);
-  }
+  const dataBloco = document.createElement('div');
+  dataBloco.className = 'lancar-data-bloco';
+
+  const dataLabel = document.createElement('div');
+  dataLabel.className = 'lancar-data-label';
+  dataLabel.textContent = 'Lançando';
 
   const dateEl = document.createElement('h1');
   dateEl.className = 'lancar-date';
   dateEl.textContent = formatDateHeader(date);
-  header.append(dateEl);
 
-  // --- Tipo toggle -----------------------------------------------------
+  dataBloco.append(dataLabel, dateEl);
 
-  const tipoToggle = document.createElement('div');
-  tipoToggle.className = 'kind-toggle';
+  // Em Cartão a data some do lugar de destaque porque o que decide a compra
+  // é outro par: qual cartão e em quantas vezes. A data continua sendo a do
+  // dia lançado, usada no insert e na previsão de vencimento.
+  const cartaoPickers = document.createElement('div');
+  cartaoPickers.className = 'cartao-pickers';
 
-  const diarioBtn = document.createElement('button');
-  diarioBtn.type = 'button';
-  diarioBtn.textContent = 'Diário';
+  let cards: Card[] = [];
+  let cardIdx = 0;
+  let parcelasIdx = 0;
 
-  const saidaBtn = document.createElement('button');
-  saidaBtn.type = 'button';
-  saidaBtn.textContent = 'Saída';
+  const cartaoPicker = criarPicker('Cartão', 'cartao-picker-nome');
+  const parcelasPicker = criarPicker('Parcelas', 'cartao-picker-parcelas');
+  cartaoPickers.append(cartaoPicker.botao, parcelasPicker.botao);
 
-  const entradaBtn = document.createElement('button');
-  entradaBtn.type = 'button';
-  entradaBtn.textContent = 'Entrada';
+  contexto.append(dataBloco, cartaoPickers);
 
-  const cartaoBtn = document.createElement('button');
-  cartaoBtn.type = 'button';
-  cartaoBtn.textContent = 'Cartão';
+  const divisor = document.createElement('div');
+  divisor.className = 'lancar-divisor';
 
-  // --- Diário section ----------------------------------------------------
+  // --- Lista de valores --------------------------------------------------
 
-  const diarioSection = document.createElement('div');
-  diarioSection.className = 'lancar-diario';
-
-  const amount = createAmountField('Valor');
-
-  const list = document.createElement('ul');
+  const list = document.createElement('ol');
   list.className = 'lancar-lista';
 
-  const totalEl = document.createElement('p');
-  totalEl.className = 'lancar-total';
+  const vazioEl = document.createElement('p');
+  vazioEl.className = 'lancar-vazio';
+  vazioEl.textContent = 'nenhum valor lançado ainda';
+
+  const listaArea = document.createElement('div');
+  listaArea.className = 'lancar-lista-area';
+  listaArea.append(list, vazioEl);
+
+  // Espaçador à parte, e não `flex: 1` na lista: em Cartão a lista some, e
+  // sem alguém para absorver a sobra o teclado e o rodapé subiriam para o
+  // meio da tela. Com ele, o bloco de baixo fica ancorado nos dois modos.
+  const espacador = document.createElement('div');
+  espacador.className = 'lancar-espacador';
+
+  // --- Total -------------------------------------------------------------
+
+  const totalLinha = document.createElement('div');
+  totalLinha.className = 'lancar-total-linha';
+
+  const totalLabel = document.createElement('span');
+  totalLabel.className = 'lancar-total-label';
+  totalLabel.textContent = 'Total';
+
+  const totalValor = document.createElement('span');
+  totalValor.className = 'lancar-total-valor';
+
+  totalLinha.append(totalLabel, totalValor);
+
+  // Consequência da compra parcelada, em âmbar como a simulação da Tela
+  // Hoje: as duas dizem a mesma coisa — "isto ainda não aconteceu".
+  const previewEl = document.createElement('p');
+  previewEl.className = 'lancar-consequencia';
+
+  // --- Campos de valor (sem UI própria) ----------------------------------
+
+  // Os dois AmountField ficam fora do DOM de propósito: no design o valor
+  // sendo digitado aparece dentro da tecla "adicionar" (lista) ou na linha
+  // do Total (cartão), não num campo separado. O que se aproveita deles é a
+  // entrada cents-first, que é onde mora a regra (numpad.ts).
+  const amount = createAmountField('Valor');
+  const cartaoAmount = createAmountField('Valor da compra');
 
   const renderTotal = (): void => {
-    const total = items.reduce((sum, item) => sum + item.amountCents, 0n);
-    totalEl.textContent = `Total: ${formatCents(total)}`;
+    const total = isLista(tipo)
+      ? items.reduce((sum, item) => sum + item.amountCents, 0n)
+      : cartaoAmount.cents();
+    totalValor.textContent = `R$ ${formatAmount(total)}`;
   };
 
   const renderList = (): void => {
     list.innerHTML = '';
-    for (const item of items) {
+    items.forEach((item, i) => {
       const li = document.createElement('li');
+      li.className = 'lancar-item';
+
+      // Numeração de dois dígitos: dá à coluna uma largura fixa, então os
+      // valores à direita continuam alinhados do item 1 ao 10.
+      const n = document.createElement('span');
+      n.className = 'item-numero';
+      n.textContent = String(i + 1).padStart(2, '0');
 
       const amountSpan = document.createElement('span');
-      amountSpan.textContent = formatCents(item.amountCents);
+      amountSpan.className = 'item-valor';
+      amountSpan.textContent = `R$ ${formatAmount(item.amountCents)}`;
 
       const removeBtn = document.createElement('button');
       removeBtn.type = 'button';
       removeBtn.className = 'item-remover';
       removeBtn.textContent = '×';
-      removeBtn.setAttribute('aria-label', 'Remover item');
+      removeBtn.setAttribute('aria-label', `Remover ${formatAmount(item.amountCents)}`);
       removeBtn.addEventListener('click', () => {
-        const idx = items.findIndex((i) => i.key === item.key);
+        const idx = items.findIndex((i2) => i2.key === item.key);
         if (idx !== -1) items.splice(idx, 1);
         renderList();
       });
 
-      li.append(amountSpan, removeBtn);
+      li.append(n, amountSpan, removeBtn);
       list.append(li);
-    }
+    });
+
+    vazioEl.hidden = items.length > 0;
     renderTotal();
   };
 
@@ -139,147 +207,177 @@ export function renderLancar(app: HTMLDivElement, options: LancarOptions = {}): 
     if (amountCents <= 0n) return;
     items.push({ key: crypto.randomUUID(), amountCents });
     amount.clear();
+    numpad.setBuffer(formatAmount(0n));
     renderList();
   };
 
-  const diarioNumpad = createNumpad({
-    onDigit: (digit) => amount.addDigit(digit),
-    onBackspace: () => amount.backspace(),
+  // --- Numpad ------------------------------------------------------------
+
+  // Um teclado só para os quatro tipos: em Cartão a coluna "adicionar" some
+  // (a compra é um valor, não uma lista) e o valor digitado aparece no
+  // Total. Dois teclados empilhados fariam a tela pular de altura na troca.
+  const numpad = createNumpad({
+    onDigit: (digit) => {
+      if (isLista(tipo)) {
+        amount.addDigit(digit);
+        numpad.setBuffer(formatAmount(amount.cents()));
+      } else {
+        cartaoAmount.addDigit(digit);
+        renderTotal();
+        void updatePreview();
+      }
+    },
+    onBackspace: () => {
+      if (isLista(tipo)) {
+        amount.backspace();
+        numpad.setBuffer(formatAmount(amount.cents()));
+      } else {
+        cartaoAmount.backspace();
+        renderTotal();
+        void updatePreview();
+      }
+    },
     onAdd: commitItem,
   });
 
-  diarioSection.append(amount.input, list, totalEl, diarioNumpad);
+  // --- Cartão: pickers e consequência ------------------------------------
 
-  // --- Cartão section ------------------------------------------------
+  function criarPicker(label: string, valorClass: string): {
+    botao: HTMLButtonElement;
+    valorEl: HTMLElement;
+  } {
+    const botao = document.createElement('button');
+    botao.type = 'button';
+    botao.className = 'cartao-picker';
 
-  const cartaoSection = document.createElement('div');
-  cartaoSection.className = 'lancar-cartao';
+    const labelEl = document.createElement('span');
+    labelEl.className = 'cartao-picker-label';
+    labelEl.textContent = label;
 
-  const cardSelect = document.createElement('select');
-  cardSelect.className = 'cartao-select';
-  cardSelect.setAttribute('aria-label', 'Cartão');
+    const valorEl = document.createElement('span');
+    valorEl.className = `cartao-picker-valor ${valorClass}`;
 
-  const parcelasLabel = document.createElement('label');
-  parcelasLabel.className = 'recorrencia-dia-label';
-  parcelasLabel.textContent = 'Parcelas';
+    botao.append(labelEl, valorEl);
+    return { botao, valorEl };
+  }
 
-  const parcelasInput = document.createElement('input');
-  parcelasInput.type = 'number';
-  parcelasInput.min = '1';
-  parcelasInput.max = '48';
-  parcelasInput.value = '1';
-  parcelasInput.className = 'recorrencia-dia-input';
-  parcelasLabel.append(parcelasInput);
+  const renderPickers = (): void => {
+    const card = cards[cardIdx];
+    cartaoPicker.valorEl.textContent = card ? card.name : 'nenhum';
+    parcelasPicker.valorEl.textContent = `${PARCELAS[parcelasIdx] as number}x`;
+  };
 
-  const cartaoAmount = createAmountField('Valor da compra');
+  cartaoPicker.botao.addEventListener('click', () => {
+    if (cards.length === 0) return;
+    cardIdx = (cardIdx + 1) % cards.length;
+    renderPickers();
+    void updatePreview();
+  });
 
-  const previewEl = document.createElement('p');
-  previewEl.className = 'cartao-preview';
+  parcelasPicker.botao.addEventListener('click', () => {
+    parcelasIdx = (parcelasIdx + 1) % PARCELAS.length;
+    renderPickers();
+    void updatePreview();
+  });
 
   const updatePreview = debounce(async (): Promise<void> => {
-    const cardId = cardSelect.value;
-    const installments = Number(parcelasInput.value);
+    const card = cards[cardIdx];
+    const installments = PARCELAS[parcelasIdx] as number;
     const amountCents = cartaoAmount.cents();
 
-    if (
-      cardId === '' ||
-      amountCents <= 0n ||
-      !Number.isInteger(installments) ||
-      installments < 1 ||
-      installments > 48
-    ) {
+    if (!card || amountCents <= 0n) {
       previewEl.textContent = '';
       return;
     }
 
     try {
       const db = await getDb();
-      const rows = await previewInstallments(db, cardId, date, amountCents, installments);
+      const rows = await previewInstallments(db, card.id, date, amountCents, installments);
       const first = rows[0];
       const last = rows[rows.length - 1];
       if (!first || !last) {
         previewEl.textContent = '';
         return;
       }
-      const vencimento = formatDateShort(first.due_date);
+      const vencimento = formatDateSlash(first.due_date);
       if (installments === 1) {
-        previewEl.textContent = `À vista — vence ${vencimento}`;
+        previewEl.textContent = `à vista — vence ${vencimento}`;
       } else if (first.amount_cents === last.amount_cents) {
-        previewEl.textContent = `${installments}x de ${formatCents(first.amount_cents)} — primeira vence ${vencimento}`;
+        previewEl.textContent = `${installments}x de R$ ${formatAmount(first.amount_cents)} — primeira vence ${vencimento}`;
       } else {
         // O resto da divisão vai só na primeira parcela (SPEC.md §4), então
         // ela difere das demais em 1 centavo — dizer "Nx de R$X" aqui
         // afirmaria um valor uniforme que as outras parcelas não têm.
         previewEl.textContent =
-          `${installments}x — primeira de ${formatCents(first.amount_cents)} (vence ${vencimento}), ` +
-          `demais de ${formatCents(last.amount_cents)}`;
+          `${installments}x — primeira de R$ ${formatAmount(first.amount_cents)} (vence ${vencimento}), ` +
+          `demais de R$ ${formatAmount(last.amount_cents)}`;
       }
     } catch (err) {
       previewEl.textContent = `Falha ao calcular: ${(err as Error).message}`;
     }
   }, 150);
 
-  const cartaoNumpad = createNumpad({
-    onDigit: (digit) => {
-      cartaoAmount.addDigit(digit);
-      void updatePreview();
-    },
-    onBackspace: () => {
-      cartaoAmount.backspace();
-      void updatePreview();
-    },
-  });
-
-  cartaoSection.append(cardSelect, parcelasLabel, cartaoAmount.input, cartaoNumpad, previewEl);
-
-  cardSelect.addEventListener('change', () => void updatePreview());
-  parcelasInput.addEventListener('input', () => void updatePreview());
-
   let cardsLoaded = false;
   const loadCardsOnce = async (): Promise<void> => {
     if (cardsLoaded) return;
-    cardSelect.innerHTML = '<option value="">Carregando…</option>';
+    cartaoPicker.valorEl.textContent = 'carregando…';
     try {
       const db = await getDb();
-      const cards = (await listCards(db)).filter((c) => c.archived_at === null);
+      const carregados = (await listCards(db)).filter((c) => c.archived_at === null);
       // Only latch on success — a failed load (e.g. getDb() not ready yet)
       // must stay retryable on the next tap of the Cartão tab, not lock the
       // screen into a permanent "Falha ao carregar" with no way forward.
       cardsLoaded = true;
-      cardSelect.innerHTML = '';
-      if (cards.length === 0) {
-        cardSelect.innerHTML = '<option value="">Nenhum cartão cadastrado</option>';
-        return;
-      }
-      for (const card of cards) {
-        const option = document.createElement('option');
-        option.value = card.id;
-        option.textContent = card.name;
-        cardSelect.append(option);
-      }
+      cards = carregados;
+      cardIdx = 0;
+      renderPickers();
       void updatePreview();
     } catch (err) {
-      cardSelect.innerHTML = `<option value="">Falha ao carregar: ${(err as Error).message}</option>`;
+      cartaoPicker.valorEl.textContent = 'erro';
+      errorEl.textContent = `Falha ao carregar cartões: ${(err as Error).message}`;
     }
   };
 
-  // --- Tipo switching ------------------------------------------------
+  // --- Tipo toggle -------------------------------------------------------
 
-  const isLista = (t: typeof tipo): boolean => t !== 'cartao';
+  const tipoToggle = document.createElement('div');
+  tipoToggle.className = 'kind-toggle';
+
+  const criarPill = (label: string): HTMLButtonElement => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = label;
+    tipoToggle.append(btn);
+    return btn;
+  };
+
+  const diarioBtn = criarPill('Diário');
+  const saidaBtn = criarPill('Saída');
+  const entradaBtn = criarPill('Entrada');
+  const cartaoBtn = criarPill('Cartão');
 
   const renderTipo = (): void => {
-    diarioBtn.classList.toggle('kind-ativo', tipo === 'diario');
-    saidaBtn.classList.toggle('kind-ativo', tipo === 'saida');
-    entradaBtn.classList.toggle('kind-ativo', tipo === 'entrada');
-    cartaoBtn.classList.toggle('kind-ativo', tipo === 'cartao');
-    diarioBtn.setAttribute('aria-pressed', String(tipo === 'diario'));
-    saidaBtn.setAttribute('aria-pressed', String(tipo === 'saida'));
-    entradaBtn.setAttribute('aria-pressed', String(tipo === 'entrada'));
-    cartaoBtn.setAttribute('aria-pressed', String(tipo === 'cartao'));
-    diarioSection.hidden = !isLista(tipo);
-    cartaoSection.hidden = tipo !== 'cartao';
-    naoGasteiBtn.hidden = !isLista(tipo);
+    const pills: [HTMLButtonElement, typeof tipo][] = [
+      [diarioBtn, 'diario'],
+      [saidaBtn, 'saida'],
+      [entradaBtn, 'entrada'],
+      [cartaoBtn, 'cartao'],
+    ];
+    for (const [btn, t] of pills) {
+      btn.classList.toggle('kind-ativo', tipo === t);
+      btn.setAttribute('aria-pressed', String(tipo === t));
+    }
+
+    const lista = isLista(tipo);
+    dataBloco.hidden = !lista;
+    cartaoPickers.hidden = lista;
+    listaArea.hidden = !lista;
+    naoGasteiBtn.hidden = !lista;
+    numpad.element.classList.toggle('numpad-sem-adicionar', !lista);
     errorEl.textContent = '';
+    if (lista) previewEl.textContent = '';
+    numpad.setBuffer(formatAmount(lista ? amount.cents() : 0n));
+    renderTotal();
   };
 
   // Items são gravados com o `kind` vigente no momento do Salvar (§ acima),
@@ -288,8 +386,8 @@ export function renderLancar(app: HTMLDivElement, options: LancarOptions = {}): 
   // salvo do que gravar com o kind errado sem avisar.
   const selecionarLista = (novoTipo: 'diario' | 'saida' | 'entrada'): void => {
     // Só limpa ao trocar entre kinds da lista: Cartão nunca toca `items`
-    // (usa cartaoAmount/cardSelect à parte), então ir e voltar por ele não
-    // deveria custar os valores ainda não salvos.
+    // (usa cartaoAmount à parte), então ir e voltar por ele não deveria
+    // custar os valores ainda não salvos.
     if (isLista(tipo) && novoTipo !== tipo) {
       items.length = 0;
       amount.clear();
@@ -297,7 +395,6 @@ export function renderLancar(app: HTMLDivElement, options: LancarOptions = {}): 
     }
     tipo = novoTipo;
     renderTipo();
-    amount.input.focus();
   };
 
   diarioBtn.addEventListener('click', () => selecionarLista('diario'));
@@ -306,10 +403,13 @@ export function renderLancar(app: HTMLDivElement, options: LancarOptions = {}): 
   cartaoBtn.addEventListener('click', () => {
     tipo = 'cartao';
     renderTipo();
+    // Voltar para Cartão preserva o valor já digitado (renderTipo não mexe em
+    // cartaoAmount), mas apagou a linha de consequência ao sair — sem
+    // recalcular aqui, a tela mostraria um total parcelado sem dizer em
+    // quantas vezes até a próxima tecla.
+    void updatePreview();
     void loadCardsOnce();
   });
-
-  tipoToggle.append(diarioBtn, saidaBtn, entradaBtn, cartaoBtn);
 
   // --- Footer ----------------------------------------------------------
 
@@ -371,16 +471,12 @@ export function renderLancar(app: HTMLDivElement, options: LancarOptions = {}): 
   // um Diário real ser lançado nele — comportamento correto, não um bug a
   // esconder com um settleDay artificial aqui.
   const salvarCartao = async (): Promise<void> => {
-    const cardId = cardSelect.value;
-    const installments = Number(parcelasInput.value);
+    const card = cards[cardIdx];
+    const installments = PARCELAS[parcelasIdx] as number;
     const amountCents = cartaoAmount.cents();
 
-    if (cardId === '') {
-      errorEl.textContent = 'Escolha um cartão.';
-      return;
-    }
-    if (!Number.isInteger(installments) || installments < 1 || installments > 48) {
-      errorEl.textContent = 'Parcelas precisa estar entre 1 e 48.';
+    if (!card) {
+      errorEl.textContent = 'Nenhum cartão cadastrado.';
       return;
     }
     if (amountCents <= 0n) {
@@ -392,7 +488,7 @@ export function renderLancar(app: HTMLDivElement, options: LancarOptions = {}): 
     errorEl.textContent = '';
     try {
       const db = await getDb();
-      const id = await insertPurchase(db, { cardId, date, amountCents, installments });
+      const id = await insertPurchase(db, { cardId: card.id, date, amountCents, installments });
       avancar({ ids: [id], expiresAt: Date.now() + 5000, kind: 'purchase' });
     } catch (err) {
       salvarBtn.disabled = false;
@@ -422,12 +518,25 @@ export function renderLancar(app: HTMLDivElement, options: LancarOptions = {}): 
   salvarBtn.addEventListener('click', salvar);
   naoGasteiBtn.addEventListener('click', () => void naoGastei());
 
-  footer.append(naoGasteiBtn, salvarBtn);
+  footer.append(salvarBtn, naoGasteiBtn);
 
-  app.append(header, tipoToggle, diarioSection, cartaoSection, errorEl, footer);
-  renderTotal();
+  app.append(
+    topo,
+    contexto,
+    divisor,
+    listaArea,
+    espacador,
+    totalLinha,
+    previewEl,
+    tipoToggle,
+    numpad.element,
+    errorEl,
+    footer,
+  );
+
+  renderPickers();
+  renderList();
   renderTipo();
-  amount.input.focus();
 
   // Desfazer o dia anterior da fila: apagar os lançamentos deixa aquele
   // dia pendente de novo, então a tela volta para ele.
