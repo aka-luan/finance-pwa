@@ -153,3 +153,68 @@ export interface PurchaseInput {
 export function insertPurchase(db: PGlite, input: PurchaseInput): Promise<string>;
 
 export function deletePurchase(db: PGlite, id: string): Promise<void>;
+
+export function needsFirstRun(db: PGlite): Promise<boolean>;
+
+export interface Category {
+  id: string;
+  name: string;
+}
+
+export function listCategories(db: PGlite): Promise<Category[]>;
+
+export interface MonthlyBudgetLine {
+  category_id: string;
+  name: string;
+  amount_cents: bigint;
+}
+
+export interface MonthlyBudget {
+  id: string;
+  effective_from: string;
+  lines: MonthlyBudgetLine[];
+}
+
+export function getMonthlyBudget(db: PGlite, today: string): Promise<MonthlyBudget | null>;
+
+export interface CategorySpend {
+  category_id: string | null;
+  amount_cents: bigint;
+}
+
+export function spentByCategoryLast30Days(db: PGlite, today: string): Promise<CategorySpend[]>;
+
+export function spentTodayDiario(db: PGlite, today: string): Promise<bigint>;
+
+export interface PlanningCategoryInput {
+  id?: string;
+  name: string;
+  plannedCents: bigint;
+}
+
+export interface PlanningFixoInput {
+  id?: string;
+  kind: 'entrada' | 'saida';
+  label: string;
+  amountCents: bigint;
+  dayOfMonth: number;
+}
+
+export interface PlanningPayload {
+  balanceCents: bigint;
+  categories: PlanningCategoryInput[];
+  fixos: PlanningFixoInput[];
+}
+
+export interface ConfirmPlanningResult {
+  estimateCents: bigint;
+  monthlyTotal: bigint;
+}
+
+export function confirmPlanning(
+  db: PGlite,
+  today: string,
+  payload: PlanningPayload,
+): Promise<ConfirmPlanningResult>;
+
+export function roundHalfUpDiv(n: bigint, d: bigint): bigint;

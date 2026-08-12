@@ -1,5 +1,6 @@
 import { PGlite } from '@electric-sql/pglite';
 import schemaSql from '../../schema.sql?raw';
+import { ensureAdditiveTables } from './additive.mjs';
 import { DATA_DIR, pgliteParsers } from './pglite-config.mjs';
 import { splitSchema } from './schema.mjs';
 
@@ -22,6 +23,7 @@ async function boot(): Promise<PGlite> {
   // database persisted in IndexedDB keeps its tables between releases but
   // would otherwise keep its old functions too, so the functions/views
   // half — all `create or replace` — is re-applied on every boot instead.
+  // Post-v1 tables also need CREATE TABLE IF NOT EXISTS (ADR 0004).
   const { rows } = await db.query<{ to_regclass: string | null }>(
     "select to_regclass('public.transaction') as to_regclass",
   );
@@ -29,6 +31,7 @@ async function boot(): Promise<PGlite> {
     await db.exec(schemaSql);
   } else {
     await db.exec(splitSchema(schemaSql).replaceable);
+    await ensureAdditiveTables(db);
   }
 
   return db;

@@ -877,11 +877,152 @@ body {
 .screen-acertar,
 .screen-recorrencias,
 .screen-recorrencia-form,
-.screen-linha-tempo {
+.screen-linha-tempo,
+.screen-wizard,
+.screen-boot {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
+
+.wizard-progress {
+  font-size: 0.8rem;
+  color: var(--fg-terciario);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.wizard-title {
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: var(--fg-hero);
+  margin: 0;
+  line-height: 1.25;
+}
+
+.wizard-hint {
+  margin: 0;
+  color: var(--fg-secundario);
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.wizard-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  flex: 1;
+}
+
+.wizard-section {
+  margin: 12px 0 0;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-family: var(--mono);
+  color: var(--fg-secundario);
+}
+
+.wizard-list,
+.wizard-fixed {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.wizard-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.wizard-name {
+  background: var(--surface-pill);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--fg);
+  padding: 10px 12px;
+  font: inherit;
+}
+
+.wizard-money {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface-pill);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 12px;
+}
+
+.wizard-money span {
+  color: var(--fg-secundario);
+}
+
+.wizard-money input {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  outline: none;
+}
+
+.wizard-day {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--fg-secundario);
+  font-size: 0.9rem;
+}
+
+.wizard-day input {
+  width: 4.5rem;
+  background: var(--surface-pill);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--fg);
+  padding: 10px 12px;
+  font: inherit;
+}
+
+.wizard-link {
+  background: none;
+  border: 0;
+  color: var(--fg-secundario);
+  text-align: left;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.wizard-running,
+.wizard-compare-row {
+  margin: 0;
+  color: var(--fg-secundario);
+  font-size: 0.9rem;
+}
+
+.wizard-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.wizard-summary-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.wizard-summary-row span:first-child {
+  color: var(--fg-secundario);
+}
+
 
 .acertar-titulo,
 .config-title {

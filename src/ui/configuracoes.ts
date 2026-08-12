@@ -7,11 +7,12 @@ import {
   parseBackup,
   serializeBackup,
 } from '../db/backup.mjs';
-import { clearEstimateDismissals, todayBelem } from '../db/queries.mjs';
+import { clearEstimateDismissals, needsFirstRun, todayBelem } from '../db/queries.mjs';
 import { renderCartoes } from './cartoes';
 import { formatTimestamp } from './format';
 import { renderHoje } from './hoje';
 import { renderRecorrencias } from './recorrencias';
+import { renderWizardPlanning } from './wizard-planning';
 
 // Tela Configurações, por ora só backup (SPEC.md §5). Manual export and
 // restore, reachable without devtools — see docs/adr/0001-backup-json-manual.md
@@ -43,6 +44,16 @@ export function renderConfiguracoes(app: HTMLDivElement): void {
   cartoesBtn.className = 'btn-bloco';
   cartoesBtn.textContent = 'Gerenciar cartões';
   cartoesBtn.addEventListener('click', () => renderCartoes(app));
+
+  const planejamentoTitle = document.createElement('h2');
+  planejamentoTitle.className = 'config-secao';
+  planejamentoTitle.textContent = 'Planejamento';
+
+  const recalibrarBtn = document.createElement('button');
+  recalibrarBtn.type = 'button';
+  recalibrarBtn.className = 'btn-bloco';
+  recalibrarBtn.textContent = 'Recalibrar planejamento';
+  recalibrarBtn.addEventListener('click', () => renderWizardPlanning(app, 'recalibrar'));
 
   const estimativaTitle = document.createElement('h2');
   estimativaTitle.className = 'config-secao';
@@ -224,8 +235,12 @@ export function renderConfiguracoes(app: HTMLDivElement): void {
         try {
           const db = await getDb();
           await importBackup(db, backup);
-          // Back to Hoje: the restored saldo on screen is the proof it worked.
-          renderHoje(app);
+          // Reaplica o gate (#18): backup pronto → Hoje; senão wizard.
+          if (await needsFirstRun(db)) {
+            renderWizardPlanning(app, 'primeiro-uso');
+          } else {
+            renderHoje(app);
+          }
         } catch (err) {
           confirmarBtn.disabled = false;
           cancelarBtn.disabled = false;
@@ -249,6 +264,8 @@ export function renderConfiguracoes(app: HTMLDivElement): void {
     recorrenciasBtn,
     cartoesTitle,
     cartoesBtn,
+    planejamentoTitle,
+    recalibrarBtn,
     estimativaTitle,
     revisarBtn,
     sectionTitle,

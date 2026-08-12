@@ -288,3 +288,252 @@ export async function setAnchor(db, date, amountCents) {
     [crypto.randomUUID(), date, amountCents],
   );
 }
+
+// ---------------------------------------------------------------------
+// Wizard de planejamento (#27 / ADRs 0002–0005)
+// ---------------------------------------------------------------------
+
+// needsFirstRun ⇔ missing account_anchor OR daily_estimate (ADR 0003).
+// monthly_budget is intentionally not required — v1 restores / old installs
+// can already show Hoje honestly without composition.
+export async function needsFirstRun(db) {
+  const { rows } = await db.query(
+    `select
+       exists(select 1 from account_anchor) as has_anchor,
+       exists(select 1 from daily_estimate) as has_estimate`,
+  );
+  const row = rows[0];
+  return !(row?.has_anchor && row?.has_estimate);
+}
+
+export async function listCategories(db) {
+  const { rows } = await db.query('select id, name from category order by name');
+  return rows;
+}
+
+// Vigente: monthly_budget with greatest effective_from <= today, plus lines.
+export async function getMonthlyBudget(db, today) {
+  const { rows: headers } = await db.query(
+    `select id, effective_from from monthly_budget
+     where effective_from <= $1::date
+     order by effective_from desc
+     limit 1`,
+    [today],
+  );
+  const header = headers[0];
+  if (!header) return null;
+
+  const { rows: lines } = await db.query(
+    `select l.category_id, c.name, l.amount_cents
+     from monthly_budget_line l
+     join category c on c.id = l.category_id
+     where l.budget_id = $1
+     order by c.name`,
+    [header.id],
+  );
+  return {
+    id: header.id,
+    effective_from: header.effective_from,
+    lines,
+  };
+}
+
+// Diário spend in [today-29, today] grouped by category_id (NULL kept).
+export async function spentByCategoryLast30Days(db, today) {
+  const { rows } = await db.query(
+    `select category_id, coalesce(sum(amount_cents), 0) as amount_cents
+     from transaction
+     where kind = 'diario'
+       and date between ($1::date - 29) and $1::date
+     group by category_id`,
+    [today],
+  );
+  return rows;
+}
+
+export async function spentTodayDiario(db, today) {
+  const { rows } = await db.query(
+    `select coalesce(sum(amount_cents), 0) as spent_cents
+     from transaction
+     where date = $1::date and kind = 'diario'`,
+    [today],
+  );
+  return rows[0]?.spent_cents ?? 0n;
+}
+
+function roundHalfUpDiv(n, d) {
+  if (d === 0n) throw new Error('roundHalfUpDiv: divisor must be non-zero');
+  if (n === 0n) return 0n;
+  const sign = n < 0n ? -1n : 1n;
+  const absN = n < 0n ? -n : n;
+  const absD = d < 0n ? -d : d;
+  const absQ = absN / absD;
+  const absR = absN % absD;
+  return sign * (absR * 2n >= absD ? absQ + 1n : absQ);
+}
+
+async function setAnchorTx(tx, date, amountCents) {
+  await tx.query(
+    `insert into account_anchor (id, date, amount_cents)
+     select $1::uuid, $2::date, $3::bigint - coalesce((
+              select sum(case when kind = 'entrada' then amount_cents else -amount_cents end)
+              from transaction where date = $2::date), 0)
+     on conflict (date) do update set amount_cents = excluded.amount_cents`,
+    [crypto.randomUUID(), date, amountCents],
+  );
+}
+
+async function deactivateRecurrenceTx(tx, id, today) {
+  await tx.query(
+    `update recurrence set start_date = least(start_date, $2::date), end_date = $2::date
+     where id = $1`,
+    [id, today],
+  );
+}
+
+/**
+ * Atomic wizard confirm (ADR 0003 + 0005).
+ *
+ * payload: {
+ *   balanceCents: bigint,
+ *   categories: { id?: string, name: string, plannedCents: bigint }[],
+ *   fixos: { id?: string, kind: 'entrada'|'saida', label: string,
+ *            amountCents: bigint, dayOfMonth: number }[],
+ * }
+ *
+ * Categories with any name used by lines are upserted. Fixos with
+ * amountCents > 0 are created/updated; active account recurrences absent
+ * from that set (or zeroed) are deactivated.
+ */
+export async function confirmPlanning(db, today, payload) {
+  const categories = payload.categories ?? [];
+  const fixos = payload.fixos ?? [];
+  const monthlyTotal = categories.reduce((s, c) => s + c.plannedCents, 0n);
+  if (monthlyTotal <= 0n) {
+    throw new Error('O orçamento mensal de gastos cotidianos precisa ser maior que zero.');
+  }
+  for (const f of fixos) {
+    if (f.amountCents > 0n && (!f.label || !f.label.trim())) {
+      throw new Error('Descrição da entrada/saída fixa não pode ficar em branco.');
+    }
+    if (f.amountCents > 0n) {
+      const day = f.dayOfMonth;
+      if (!Number.isInteger(day) || day < 1 || day > 31) {
+        throw new Error('Dia do mês das fixas precisa estar entre 1 e 31.');
+      }
+    }
+  }
+
+  const estimateCents = roundHalfUpDiv(monthlyTotal, 30n);
+
+  await db.transaction(async (tx) => {
+    // 1) Upsert categories by id when provided, else by name.
+    const categoryIds = new Map(); // name → id for lines
+    for (const cat of categories) {
+      const name = cat.name.trim();
+      if (!name) throw new Error('Nome de categoria não pode ficar em branco.');
+      let id = cat.id ?? null;
+      if (id) {
+        await tx.query(
+          `insert into category (id, name) values ($1, $2)
+           on conflict (id) do update set name = excluded.name`,
+          [id, name],
+        );
+      } else {
+        const existing = await tx.query('select id from category where name = $1', [name]);
+        if (existing.rows[0]) {
+          id = existing.rows[0].id;
+        } else {
+          id = crypto.randomUUID();
+          await tx.query('insert into category (id, name) values ($1, $2)', [id, name]);
+        }
+      }
+      categoryIds.set(name, id);
+    }
+
+    // 2) Anchor (same semantics as setAnchor).
+    await setAnchorTx(tx, today, payload.balanceCents);
+
+    // 3) New monthly_budget + lines (zeros kept). Same effective_from as estimate.
+    let liveBudgetId;
+    const existingBudget = await tx.query(
+      'select id from monthly_budget where effective_from = $1::date',
+      [today],
+    );
+    if (existingBudget.rows[0]) {
+      liveBudgetId = existingBudget.rows[0].id;
+      await tx.query('delete from monthly_budget_line where budget_id = $1', [liveBudgetId]);
+    } else {
+      liveBudgetId = crypto.randomUUID();
+      await tx.query(
+        'insert into monthly_budget (id, effective_from) values ($1, $2::date)',
+        [liveBudgetId, today],
+      );
+    }
+    for (const cat of categories) {
+      const name = cat.name.trim();
+      const categoryId = categoryIds.get(name);
+      await tx.query(
+        `insert into monthly_budget_line (budget_id, category_id, amount_cents)
+         values ($1, $2, $3)`,
+        [liveBudgetId, categoryId, cat.plannedCents],
+      );
+    }
+
+    // 4) daily_estimate same effective_from.
+    await tx.query(
+      `insert into daily_estimate (id, amount_cents, effective_from)
+       values ($1, $2, $3::date)
+       on conflict (effective_from) do update set amount_cents = excluded.amount_cents`,
+      [crypto.randomUUID(), estimateCents, today],
+    );
+
+    // 5) Reconcile account fixos by uuid (ADR 0005).
+    const active = await tx.query(
+      `select id from recurrence
+       where target = 'account'
+         and (end_date is null or end_date > $1::date)`,
+      [today],
+    );
+    const activeIds = new Set(active.rows.map((r) => r.id));
+    const keptIds = new Set();
+
+    for (const f of fixos) {
+      if (f.amountCents <= 0n) {
+        if (f.id && activeIds.has(f.id)) {
+          await deactivateRecurrenceTx(tx, f.id, today);
+        }
+        continue;
+      }
+      const label = f.label.trim();
+      if (f.id && activeIds.has(f.id)) {
+        await tx.query(
+          `update recurrence
+           set kind = $2, amount_cents = $3, day_of_month = $4, label = $5
+           where id = $1 and target = 'account'`,
+          [f.id, f.kind, f.amountCents, f.dayOfMonth, label],
+        );
+        keptIds.add(f.id);
+      } else {
+        const id = f.id && !activeIds.has(f.id) ? f.id : crypto.randomUUID();
+        await tx.query(
+          `insert into recurrence
+             (id, kind, target, amount_cents, day_of_month, label, start_date)
+           values ($1, $2, 'account', $3, $4, $5, $6::date)`,
+          [id, f.kind, f.amountCents, f.dayOfMonth, label, today],
+        );
+        keptIds.add(id);
+      }
+    }
+
+    for (const id of activeIds) {
+      if (!keptIds.has(id)) {
+        await deactivateRecurrenceTx(tx, id, today);
+      }
+    }
+  });
+
+  return { estimateCents, monthlyTotal };
+}
+
+export { roundHalfUpDiv };

@@ -134,6 +134,12 @@ await seeded.exec(`
     ('d0000000-0000-0000-0000-000000000001', 5000, '2026-01-01'),
     ('d0000000-0000-0000-0000-000000000002', 6290, '2026-07-15');
 
+  insert into monthly_budget (id, effective_from) values
+    ('e0000000-0000-0000-0000-000000000001', '2026-07-15');
+
+  insert into monthly_budget_line (budget_id, category_id, amount_cents) values
+    ('e0000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000001', 188700);
+
   -- account recurrence, plus a card recurrence (must be 'saida' with a card)
   insert into recurrence (id, kind, target, card_id, amount_cents, day_of_month,
                           label, category_id, start_date, end_date) values
@@ -310,6 +316,32 @@ assert.equal(typeof file, 'string');
   await importBackup(db, parseBackup(file));
   assert.throws(() => parseBackup('{"format":"other"}'), /backup do Termômetro/i);
   assert.deepEqual(await rowCounts(db), seededCounts, 'a rejected file leaves data intact');
+}
+
+// ---------------------------------------------------------------------
+// Backup v1: accepted with monthly_budget* injected as [] (ADR 0004).
+// ---------------------------------------------------------------------
+{
+  const v2 = JSON.parse(file);
+  const v1 = {
+    format: BACKUP_FORMAT,
+    version: 1,
+    exported_at: v2.exported_at,
+    tables: { ...v2.tables },
+  };
+  delete v1.tables.monthly_budget;
+  delete v1.tables.monthly_budget_line;
+
+  const parsed = parseBackup(JSON.stringify(v1));
+  assert.deepEqual(parsed.tables.monthly_budget, []);
+  assert.deepEqual(parsed.tables.monthly_budget_line, []);
+
+  const restored = await freshDb();
+  await importBackup(restored, parsed);
+  const budgetCount = await restored.query('select count(*) as n from monthly_budget');
+  assert.equal(budgetCount.rows[0].n, 0n);
+  // Seeded fixture had no composition rows either — timeline still matches.
+  assert.equal(await timelineOf(restored), seededTimeline);
 }
 
 console.log('pglite-backup-test: ok');

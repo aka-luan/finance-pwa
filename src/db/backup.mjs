@@ -5,20 +5,23 @@
 // Format and trigger were left open in SPEC.md §11 and are resolved in
 // docs/adr/0001-backup-json-manual.md: a manual, human-readable JSON dump of
 // every table, restorable into an empty database.
+//
+// Version 2 (ADR 0004): adds monthly_budget / monthly_budget_line. parseBackup
+// still accepts v1 by filling those tables with [].
 
 export const BACKUP_FORMAT = 'termometro-backup';
-export const BACKUP_VERSION = 1;
+export const BACKUP_VERSION = 2;
+
+/** Tables that did not exist in backup v1 — filled with [] when reading v1. */
+export const BACKUP_V1_MISSING_TABLES = ['monthly_budget', 'monthly_budget_line'];
 
 // Parents before children. Import inserts in this order because foreign keys
 // are checked immediately, not deferred; the wipe truncates the whole list in
 // one statement so the FKs between them are satisfied at the same instant.
-//
-// Adding a table here breaks older files: parseBackup requires every name in
-// this list to be present, so a backup exported before the addition would be
-// rejected. When this list grows, bump BACKUP_VERSION and teach parseBackup to
-// accept the older version by filling the tables it predates with [].
 export const BACKUP_TABLES = [
   'category',
+  'monthly_budget',
+  'monthly_budget_line',
   'card',
   'account_anchor',
   'recurrence',
@@ -60,12 +63,6 @@ export async function exportBackup(db) {
 // A table added to schema.sql but not to BACKUP_TABLES would be absent from
 // every export, and nothing in the file would say so. The caller checks and
 // tells the user which tables were left out.
-//
-// Exporting the rest anyway is deliberate: a backup missing one new table
-// still holds the years of history this feature exists to protect, whereas
-// refusing outright would leave the user with nothing. Restoring is safe
-// either way — it only truncates the tables it knows about, so a table
-// outside the list is never destroyed by a restore.
 export async function findTablesOutsideBackup(db) {
   const { rows } = await db.query(
     `select table_name from information_schema.tables
@@ -77,8 +74,6 @@ export async function findTablesOutsideBackup(db) {
     .sort();
 }
 
-// Pretty-printed: the point of a text format over a binary datadir dump is
-// that the user can open the file and see their history in it.
 export function serializeBackup(backup) {
   return JSON.stringify(backup, bigintToString, 2);
 }
@@ -99,9 +94,9 @@ export function parseBackup(text) {
     throw new Error('O arquivo não é um backup do Termômetro.');
   }
 
-  if (parsed.version !== BACKUP_VERSION) {
+  if (parsed.version !== 1 && parsed.version !== 2) {
     throw new Error(
-      `Backup na versão ${parsed.version}; este app lê a versão ${BACKUP_VERSION}.`,
+      `Backup na versão ${parsed.version}; este app lê as versões 1 e 2.`,
     );
   }
 
@@ -113,14 +108,23 @@ export function parseBackup(text) {
     throw new Error('Backup sem tabelas.');
   }
 
-  // Every table has to be there. Treating a missing one as empty would let a
-  // file with `tables: {}` pass validation and wipe the database — the exact
-  // failure this function exists to prevent. The cost is that growing
-  // BACKUP_TABLES invalidates older files, which is why that list carries the
-  // instruction to bump BACKUP_VERSION and fill the new tables with [] here.
-  for (const table of BACKUP_TABLES) {
+  // Tables the file's version already knew must be present. Tables introduced
+  // later (v1 → monthly_budget*) are injected as [] so restore stays safe
+  // without inventing a composition from daily_estimate (ADR 0004).
+  const required =
+    parsed.version === 1
+      ? BACKUP_TABLES.filter((t) => !BACKUP_V1_MISSING_TABLES.includes(t))
+      : BACKUP_TABLES;
+
+  for (const table of required) {
     if (!Array.isArray(parsed.tables[table])) {
       throw new Error(`Backup incompleto: falta a tabela ${table}.`);
+    }
+  }
+
+  if (parsed.version === 1) {
+    for (const table of BACKUP_V1_MISSING_TABLES) {
+      parsed.tables[table] = [];
     }
   }
 
@@ -132,18 +136,12 @@ export function parseBackup(text) {
 // is the truth now" (SPEC.md §2).
 export async function importBackup(db, backup) {
   await db.transaction(async (tx) => {
-    // One statement for every table: truncating a subset is rejected outright
-    // when a table left out references one being truncated.
     await tx.query(`truncate table ${BACKUP_TABLES.join(', ')}`);
 
     for (const table of BACKUP_TABLES) {
       const rows = backup.tables[table];
       if (rows.length === 0) continue;
 
-      // json_populate_recordset applies each column's own input function, so
-      // Postgres converts the strings back to bigint/date/uuid/enum itself and
-      // no per-column casting has to be maintained here. It matches by name,
-      // so column order in the file doesn't matter.
       await tx.query(
         `insert into ${table}
          select * from json_populate_recordset(null::${table}, $1::json)`,
