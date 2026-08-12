@@ -64,6 +64,7 @@ servidor previsto em §5 substitui esta tela como caminho principal.
   é que acrescentar uma tabela a `BACKUP_TABLES` invalida os arquivos antigos:
   quando isso acontecer, sobe-se `BACKUP_VERSION` e ensina-se `parseBackup` a
   ler a versão anterior preenchendo com `[]` as tabelas que ela não conhecia.
+  O primeiro bump (v2, `monthly_budget*`) está em ADR 0004.
 - O teste compara **todas as colunas de todas as tabelas**, não só a linha do
   tempo. `timeline()` não lê `day_settled`, `estimate_dismissal`,
   `category.name`, `recurrence.label` nem `purchase.description`, então um
