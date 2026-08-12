@@ -966,15 +966,23 @@ body {
   color: var(--fg-secundario);
 }
 
-.wizard-fixed > .wizard-section:not(:first-child) {
-  margin-top: 4px;
-}
-
 .wizard-list,
 .wizard-fixed {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.wizard-fixed {
+  gap: 6px;
+}
+
+.wizard-fixed > .wizard-section:not(:first-child) {
+  margin-top: 10px;
+}
+
+.wizard-fixed-list {
+  gap: 6px;
 }
 
 .wizard-row {
@@ -1035,31 +1043,143 @@ body {
   outline: none;
 }
 
-/* Fixos: name keeps the full first line (legible). Day, amount and
-   remove share the second — compact without forcing four stacked fields. */
-.wizard-row-fixed .wizard-name {
-  flex: 1 1 100%;
+/* Fixos: one compact card per item — name + menu on the first line,
+   amount (lead) + day (quiet) on the second. */
+.wizard-fixed-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    'name more'
+    'money day';
+  align-items: center;
+  column-gap: 4px;
+  row-gap: 0;
+  background: var(--surface-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 2px 2px 6px 12px;
 }
 
-.wizard-day {
-  display: flex;
-  align-items: center;
+.wizard-fixed-card .wizard-name {
+  grid-area: name;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 6px 0 2px;
+  min-height: 36px;
+  font-weight: 500;
+  color: var(--fg-hero);
+}
+
+.wizard-fixed-card .wizard-money {
+  grid-area: money;
+  min-width: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 0 0 4px;
+  min-height: 36px;
   gap: 6px;
-  flex: 0 0 auto;
+}
+
+.wizard-fixed-card .wizard-money span {
   color: var(--fg-secundario);
   font-size: 0.85rem;
 }
 
-.wizard-day input {
-  width: 3.25rem;
-  background: var(--surface-pill);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  color: var(--fg);
-  padding: 8px 6px;
-  min-height: 44px;
+.wizard-fixed-card .wizard-money input {
+  font-family: var(--mono);
+  font-size: 1.2rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-hero);
+}
+
+.wizard-fixed-card .wizard-money input::placeholder {
+  color: var(--fg-saldo);
+}
+
+.wizard-fixed-card .wizard-day {
+  grid-area: day;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px 4px 0;
+  color: var(--fg-terciario);
+  font-size: 0.75rem;
+}
+
+.wizard-fixed-card .wizard-day input {
+  width: 2.5rem;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  min-height: 36px;
+  color: var(--fg-secundario);
   text-align: center;
   font-variant-numeric: tabular-nums;
+  appearance: textfield;
+}
+
+.wizard-fixed-card .wizard-day input::-webkit-outer-spin-button,
+.wizard-fixed-card .wizard-day input::-webkit-inner-spin-button {
+  appearance: none;
+}
+
+.wizard-more-wrap {
+  grid-area: more;
+  position: relative;
+}
+
+.wizard-more {
+  width: 44px;
+  height: 44px;
+  border: 0;
+  background: none;
+  color: var(--fg-muted);
+  letter-spacing: 0.08em;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.wizard-more-menu {
+  position: absolute;
+  right: 4px;
+  top: calc(100% - 4px);
+  z-index: 3;
+  min-width: 9rem;
+  padding: 4px;
+  background: var(--surface-card);
+  border: 1px solid var(--border-control);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 45%);
+}
+
+.wizard-more-menu button {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--fg);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.wizard-add {
+  align-self: flex-start;
+  min-height: 40px;
+  padding: 6px 0;
+  border: 0;
+  background: none;
+  color: var(--acao-texto-claro);
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
 }
 
 .wizard-link {
@@ -1071,12 +1191,6 @@ body {
   font: inherit;
   cursor: pointer;
   text-decoration: underline;
-}
-
-.wizard-remove {
-  flex: 0 0 auto;
-  padding: 8px 2px;
-  font-size: 0.85rem;
 }
 
 .wizard-running,

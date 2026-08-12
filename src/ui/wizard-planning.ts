@@ -184,8 +184,7 @@ function paint(app: HTMLDivElement, state: WizardState): void {
     title.textContent = 'O que entra e sai todo mês?';
     const hint = document.createElement('p');
     hint.className = 'wizard-hint';
-    hint.textContent =
-      'Salário, freelas, aluguel, contas… viram recorrência na conta (com dia do mês). Não entram no diário. Pode deixar zero.';
+    hint.textContent = 'Não entram no diário.';
     body.append(hint, fixedEditor(state, setState));
     footer.append(
       secondaryBtn('Voltar', () => setState({ ...state, step: step - 1, error: '' })),
@@ -351,9 +350,23 @@ function fixedEditor(state: WizardState, setState: (s: WizardState) => void): HT
   wrap.className = 'wizard-fixed';
   wrap.append(
     sectionLabel('Entradas fixas'),
-    fixedRowList(state.inflows, (inflows) => setState({ ...state, inflows, error: '' }), '+ entrada'),
+    fixedRowList(state.inflows, (inflows) => setState({ ...state, inflows, error: '' })),
+    addFixedBtn('+ Adicionar entrada', () =>
+      setState({
+        ...state,
+        error: '',
+        inflows: [...state.inflows, newFixedRow()],
+      }),
+    ),
     sectionLabel('Saídas fixas'),
-    fixedRowList(state.outflows, (outflows) => setState({ ...state, outflows, error: '' }), '+ conta'),
+    fixedRowList(state.outflows, (outflows) => setState({ ...state, outflows, error: '' })),
+    addFixedBtn('+ Adicionar saída', () =>
+      setState({
+        ...state,
+        error: '',
+        outflows: [...state.outflows, newFixedRow()],
+      }),
+    ),
   );
   const total = document.createElement('p');
   total.className = 'wizard-running';
@@ -365,21 +378,105 @@ function fixedEditor(state: WizardState, setState: (s: WizardState) => void): HT
   return wrap;
 }
 
+function newFixedRow(): FixedRow {
+  return { id: crypto.randomUUID(), name: 'Novo', cents: 0n, dayOfMonth: 1 };
+}
+
+function addFixedBtn(label: string, onClick: () => void): HTMLButtonElement {
+  const add = document.createElement('button');
+  add.type = 'button';
+  add.className = 'wizard-add';
+  add.textContent = label;
+  add.addEventListener('click', onClick);
+  return add;
+}
+
+function closeFixedMenus(): void {
+  document.querySelectorAll('.wizard-more-wrap').forEach((el) => {
+    el.dispatchEvent(new Event('wizard-more-close'));
+  });
+}
+
+function moreMenu(onRemove: () => void): HTMLElement {
+  const wrap = document.createElement('div');
+  wrap.className = 'wizard-more-wrap';
+
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'wizard-more';
+  btn.textContent = '•••';
+  btn.setAttribute('aria-label', 'Mais ações');
+  btn.setAttribute('aria-haspopup', 'menu');
+  btn.setAttribute('aria-expanded', 'false');
+
+  const menu = document.createElement('div');
+  menu.className = 'wizard-more-menu';
+  menu.setAttribute('role', 'menu');
+  menu.hidden = true;
+
+  const remove = document.createElement('button');
+  remove.type = 'button';
+  remove.setAttribute('role', 'menuitem');
+  remove.textContent = 'Remover';
+  remove.addEventListener('click', (ev) => {
+    ev.stopPropagation();
+    onRemove();
+  });
+  menu.append(remove);
+
+  let onDoc: ((e: Event) => void) | null = null;
+  let onKey: ((e: KeyboardEvent) => void) | null = null;
+
+  const close = (): void => {
+    menu.hidden = true;
+    btn.setAttribute('aria-expanded', 'false');
+    if (onDoc) document.removeEventListener('click', onDoc);
+    if (onKey) document.removeEventListener('keydown', onKey);
+    onDoc = null;
+    onKey = null;
+  };
+
+  wrap.addEventListener('wizard-more-close', close);
+
+  btn.addEventListener('click', (ev) => {
+    ev.stopPropagation();
+    const willOpen = menu.hidden;
+    closeFixedMenus();
+    if (!willOpen) return;
+    menu.hidden = false;
+    btn.setAttribute('aria-expanded', 'true');
+    onDoc = (e: Event) => {
+      if (wrap.contains(e.target as Node)) return;
+      close();
+    };
+    onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') close();
+    };
+    setTimeout(() => {
+      if (onDoc) document.addEventListener('click', onDoc);
+      if (onKey) document.addEventListener('keydown', onKey);
+    }, 0);
+  });
+
+  wrap.append(btn, menu);
+  return wrap;
+}
+
 function fixedRowList(
   rows: FixedRow[],
   onChange: (rows: FixedRow[]) => void,
-  addLabel: string,
 ): HTMLElement {
   const list = document.createElement('div');
-  list.className = 'wizard-list';
+  list.className = 'wizard-list wizard-fixed-list';
 
   for (const rowData of rows) {
     const row = document.createElement('div');
-    row.className = 'wizard-row wizard-row-fixed';
+    row.className = 'wizard-fixed-card';
 
     const name = document.createElement('input');
     name.className = 'wizard-name';
     name.value = rowData.name;
+    name.setAttribute('aria-label', 'Nome');
     name.addEventListener('change', () => {
       onChange(
         rows.map((r) =>
@@ -388,10 +485,14 @@ function fixedRowList(
       );
     });
 
+    const money = moneyInput(rowData.cents, (cents) => {
+      onChange(rows.map((r) => (r.id === rowData.id ? { ...r, cents } : r)));
+    });
+
     const dayWrap = document.createElement('label');
     dayWrap.className = 'wizard-day';
     const dayPrefix = document.createElement('span');
-    dayPrefix.textContent = 'Dia';
+    dayPrefix.textContent = 'dia';
     const day = document.createElement('input');
     day.type = 'number';
     day.min = '1';
@@ -406,33 +507,14 @@ function fixedRowList(
     });
     dayWrap.append(dayPrefix, day);
 
-    const money = moneyInput(rowData.cents, (cents) => {
-      onChange(rows.map((r) => (r.id === rowData.id ? { ...r, cents } : r)));
-    });
-
-    const remove = document.createElement('button');
-    remove.type = 'button';
-    remove.className = 'wizard-link wizard-remove';
-    remove.textContent = 'Remover';
-    remove.addEventListener('click', () => {
-      onChange(rows.filter((r) => r.id !== rowData.id));
-    });
-
-    row.append(name, dayWrap, money, remove);
+    row.append(
+      name,
+      moreMenu(() => onChange(rows.filter((r) => r.id !== rowData.id))),
+      money,
+      dayWrap,
+    );
     list.append(row);
   }
-
-  const add = document.createElement('button');
-  add.type = 'button';
-  add.className = 'wizard-link';
-  add.textContent = addLabel;
-  add.addEventListener('click', () => {
-    onChange([
-      ...rows,
-      { id: crypto.randomUUID(), name: 'Novo', cents: 0n, dayOfMonth: 1 },
-    ]);
-  });
-  list.append(add);
   return list;
 }
 
