@@ -1083,16 +1083,20 @@ body {
 }
 
 .wizard-fixed-card .wizard-money span {
-  color: var(--fg-terciario);
-  font-size: 0.8rem;
+  color: var(--fg-secundario);
+  font-size: 0.85rem;
 }
 
 .wizard-fixed-card .wizard-money input {
   font-family: var(--mono);
-  font-size: 1.125rem;
+  font-size: 1.2rem;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
   color: var(--fg-hero);
+}
+
+.wizard-fixed-card .wizard-money input::placeholder {
+  color: var(--fg-saldo);
 }
 
 .wizard-fixed-card .wizard-day {

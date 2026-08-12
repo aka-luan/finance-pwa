@@ -184,7 +184,7 @@ function paint(app: HTMLDivElement, state: WizardState): void {
     title.textContent = 'O que entra e sai todo mês?';
     const hint = document.createElement('p');
     hint.className = 'wizard-hint';
-    hint.textContent = 'Recorrências na conta — não entram no diário.';
+    hint.textContent = 'Não entram no diário.';
     body.append(hint, fixedEditor(state, setState));
     footer.append(
       secondaryBtn('Voltar', () => setState({ ...state, step: step - 1, error: '' })),
