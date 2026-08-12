@@ -1001,6 +1001,7 @@ body {
 
 .screen-wizard .tela-footer {
   margin-top: 0;
+  padding-top: 8px;
 }
 
 .wizard-section {
@@ -1024,7 +1025,7 @@ body {
 }
 
 .wizard-fixed > .wizard-section:not(:first-child) {
-  margin-top: 10px;
+  margin-top: 2px;
 }
 
 .wizard-fixed-list {
@@ -1089,8 +1090,7 @@ body {
   outline: none;
 }
 
-/* Fixos: one compact card per item — name + menu on the first line,
-   amount (lead) + day (quiet) on the second. */
+/* Fixos: compact two-line card — name + menu, then amount + day picker. */
 .wizard-fixed-card {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -1103,7 +1103,7 @@ body {
   background: var(--surface-card);
   border: 1px solid var(--border);
   border-radius: 12px;
-  padding: 2px 2px 6px 12px;
+  padding: 0 2px 2px 12px;
 }
 
 .wizard-fixed-card .wizard-name {
@@ -1111,8 +1111,8 @@ body {
   background: transparent;
   border: 0;
   border-radius: 0;
-  padding: 6px 0 2px;
-  min-height: 36px;
+  padding: 4px 0 0;
+  min-height: 32px;
   font-weight: 500;
   color: var(--fg-hero);
 }
@@ -1123,7 +1123,7 @@ body {
   background: transparent;
   border: 0;
   border-radius: 0;
-  padding: 0 0 4px;
+  padding: 0 0 2px;
   min-height: 36px;
   gap: 6px;
 }
@@ -1145,31 +1145,24 @@ body {
   color: var(--fg-saldo);
 }
 
-.wizard-fixed-card .wizard-day {
+.wizard-day-btn {
   grid-area: day;
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 0 8px 4px 0;
-  color: var(--fg-terciario);
-  font-size: 0.75rem;
-}
-
-.wizard-fixed-card .wizard-day input {
-  width: 2.5rem;
-  background: transparent;
-  border: 0;
-  padding: 0;
+  justify-content: center;
+  gap: 2px;
+  margin: 0 6px 2px 0;
+  padding: 0 10px;
   min-height: 36px;
-  color: var(--fg-secundario);
-  text-align: center;
-  font-variant-numeric: tabular-nums;
-  appearance: textfield;
-}
-
-.wizard-fixed-card .wizard-day input::-webkit-outer-spin-button,
-.wizard-fixed-card .wizard-day input::-webkit-inner-spin-button {
-  appearance: none;
+  border: 0;
+  border-radius: 8px;
+  background: var(--surface-pill);
+  color: var(--fg-secundario-claro);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
 }
 
 .wizard-more-wrap {
@@ -1179,7 +1172,7 @@ body {
 
 .wizard-more {
   width: 44px;
-  height: 44px;
+  height: 32px;
   border: 0;
   background: none;
   color: var(--fg-muted);
@@ -1217,8 +1210,8 @@ body {
 
 .wizard-add {
   align-self: flex-start;
-  min-height: 40px;
-  padding: 6px 0;
+  min-height: 32px;
+  padding: 2px 0;
   border: 0;
   background: none;
   color: var(--acao-texto-claro);
@@ -1226,6 +1219,54 @@ body {
   font-size: 0.95rem;
   font-weight: 500;
   cursor: pointer;
+}
+
+.wizard-day-sheet-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: flex-end;
+  background: rgb(0 0 0 / 45%);
+}
+
+.wizard-day-sheet {
+  width: 100%;
+  background: var(--surface-card);
+  border-top: 1px solid var(--border);
+  border-radius: 16px 16px 0 0;
+  padding: 16px var(--lado) max(16px, env(safe-area-inset-bottom));
+}
+
+.wizard-day-sheet-title {
+  margin: 0 0 12px;
+  font-size: 0.8rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-family: var(--mono);
+  color: var(--fg-secundario);
+}
+
+.wizard-day-sheet-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.wizard-day-sheet-grid button {
+  min-height: 44px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.wizard-day-sheet-grid button.is-selected {
+  background: var(--acao);
+  color: var(--acao-fg);
 }
 
 .wizard-link {
