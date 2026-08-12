@@ -114,6 +114,20 @@ create table daily_estimate (
   effective_from  date   not null unique
 );
 
+-- Composição do orçamento mensal de gastos cotidianos (wizard / ADR 0002).
+-- Versionada por effective_from; a estimativa diária continua em daily_estimate.
+create table monthly_budget (
+  id              uuid primary key,
+  effective_from  date not null unique
+);
+
+create table monthly_budget_line (
+  budget_id     uuid   not null references monthly_budget(id) on delete cascade,
+  category_id   uuid   not null references category(id),
+  amount_cents  bigint not null check (amount_cents >= 0),
+  primary key (budget_id, category_id)
+);
+
 -- Meses em que o aviso de desvio foi dispensado.
 create table estimate_dismissal (
   month         date primary key check (month = date_trunc('month', month)),

@@ -3,6 +3,7 @@ import type { PGlite } from '@electric-sql/pglite';
 export const BACKUP_FORMAT: string;
 export const BACKUP_VERSION: number;
 export const BACKUP_TABLES: readonly string[];
+export const BACKUP_V1_MISSING_TABLES: readonly string[];
 
 export interface Backup {
   format: string;
