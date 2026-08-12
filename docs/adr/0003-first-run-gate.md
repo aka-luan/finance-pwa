@@ -41,5 +41,6 @@ gravações parciais e deixaria Hoje mentir no meio do fluxo.
 
 - `main` / boot passam a ramificar após `getDb()` conforme `needsFirstRun`.
 - Recalibrar só quando o gate está falso.
-- Implementação do wizard de produção e #19/#20 devem respeitar o commit
-  único na confirmação.
+- Implementação do wizard de produção deve respeitar o commit único na
+  confirmação, inclusive a reconciliação de fixos (#20 / ADR 0005).
+- Tabelas novas de composição: #19 / ADR 0004.

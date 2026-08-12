@@ -6,6 +6,8 @@
 
 Produzir uma especificação pronta para implementar um wizard que configure o saldo em conta e derive a estimativa diária de um orçamento mensal de gastos cotidianos, tanto no primeiro uso quanto em uma recalibração pelas Configurações.
 
+**Status:** destino atingido — ver `docs/wayfinder/spec-wizard.md` (#15–#20).
+
 ## Notes
 
 - Domínio: PWA financeira pessoal, local-first, com dinheiro persistido em centavos e datas no fuso `America/Belem`.
@@ -32,6 +34,7 @@ Produzir uma especificação pronta para implementar um wizard que configure o s
 - [Definir o modelo persistente do orçamento mensal](https://github.com/aka-luan/finance-pwa/issues/17) — composição versionada (`monthly_budget` + lines → `category`); `daily_estimate` permanece a entrada da projeção; mesmo `effective_from` no confirm do wizard. ADR 0002 / `docs/wayfinder/resolution-17.md`.
 - [Definir a detecção, retomada e conclusão do primeiro uso](https://github.com/aka-luan/finance-pwa/issues/18) — `needsFirstRun` ⇔ falta âncora ou estimativa; confirm atômico; sem rascunho no Postgres; restore reusa o gate. ADR 0003 / `docs/wayfinder/resolution-18.md`.
 - [Definir migração e compatibilidade dos backups](https://github.com/aka-luan/finance-pwa/issues/19) — boot aditivo (`CREATE TABLE IF NOT EXISTS`); backup v2; v1 restaura com `monthly_budget*` = `[]`; sem backfill da estimativa. ADR 0004 / `docs/wayfinder/resolution-19.md`.
+- [Definir como o wizard grava entradas e saídas fixas](https://github.com/aka-luan/finance-pwa/issues/20) — fixo ⇔ `recurrence` `target=account`; dia no Fixos; reconciliar por uuid no confirm atômico. ADR 0005 / `docs/wayfinder/resolution-20.md`.
 
 ## Children
 
@@ -40,7 +43,7 @@ Produzir uma especificação pronta para implementar um wizard que configure o s
 - [x] [#17 Definir o modelo persistente do orçamento mensal](https://github.com/aka-luan/finance-pwa/issues/17) — resolvido
 - [x] [#18 Definir a detecção, retomada e conclusão do primeiro uso](https://github.com/aka-luan/finance-pwa/issues/18) — resolvido
 - [x] [#19 Definir migração e compatibilidade dos backups](https://github.com/aka-luan/finance-pwa/issues/19) — resolvido
-- [ ] [#20 Definir como o wizard grava entradas e saídas fixas](https://github.com/aka-luan/finance-pwa/issues/20) — `wayfinder:grilling` · fronteira
+- [x] [#20 Definir como o wizard grava entradas e saídas fixas](https://github.com/aka-luan/finance-pwa/issues/20) — resolvido
 
 ## Dependências
 
@@ -50,13 +53,12 @@ Produzir uma especificação pronta para implementar um wizard que configure o s
 #17 modelo persistente (fechado) ──────────────────────────┤
   ├─→ #18 detecção / primeiro uso (fechado) ───────────────┤
   └─→ #19 migração / backups (fechado) ────────────────────┤
-#20 fixos → recorrências (grilling) ───────────────────────┘
+#20 fixos → recorrências (fechado) ────────────────────────┘
 ```
 
 ## Not yet specified
 
-- Critérios finais de aceitação e cobertura de testes: tornam-se precisos depois que a gravação dos fixos for decidida.
-- Mensagens de erro e estados vazios finos da implementação (o tom e a sequência já estão no #15).
+- Mensagens de erro e estados vazios finos da implementação (o tom e a sequência já estão no #15; critérios de aceitação dos fixos em `resolution-20.md`).
 
 ## Out of scope
 

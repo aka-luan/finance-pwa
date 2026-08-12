@@ -19,11 +19,14 @@ export type CategoryRow = {
   actualCents: bigint; // last 30d stub; 0 on first use
 };
 
-/** Recurring month line — entrada (salary, freelance) or saída (bills). Not the diário. */
+/** Recurring month line — entrada (salary, freelance) or saída (bills). Not the diário.
+ * Maps 1:1 onto account `recurrence` (#20 / ADR 0005). */
 export type FixedRow = {
   id: string;
   name: string;
   cents: bigint;
+  /** 1–31; persisted as recurrence.day_of_month. */
+  dayOfMonth: number;
 };
 
 export type WizardState = {
@@ -66,12 +69,14 @@ export function seedState(mode: WizardMode): WizardState {
     id: `in${i}`,
     name,
     cents: mode === 'recalibrar' ? [420_000n, 80_000n][i]! : 0n,
+    dayOfMonth: mode === 'recalibrar' ? [5, 15][i]! : 1,
   }));
 
   const outflows: FixedRow[] = SUGGESTED_OUTFLOWS.map((name, i) => ({
     id: `out${i}`,
     name,
     cents: mode === 'recalibrar' ? [180_000n, 12_000n, 22_000n, 6_000n][i]! : 0n,
+    dayOfMonth: mode === 'recalibrar' ? [10, 8, 12, 1][i]! : 1,
   }));
 
   return {

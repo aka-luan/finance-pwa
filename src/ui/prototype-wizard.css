@@ -160,6 +160,23 @@
   align-self: stretch;
 }
 
+.proto-day {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--fg-secundario);
+  font-size: 0.9rem;
+}
+
+.proto-day input {
+  width: 4.5rem;
+  background: var(--surface-pill);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--fg);
+  padding: 10px 12px;
+}
+
 .proto-cat-name {
   background: var(--surface-pill);
   border: 1px solid var(--border);
