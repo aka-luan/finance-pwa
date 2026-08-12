@@ -885,64 +885,98 @@ body {
   gap: 12px;
 }
 
+/* Pin progress/title/footer; only the step body scrolls. Compact rows
+   already cut a lot of height, but Fixos still has two lists and the
+   footer should stay in reach without scrolling past them. */
+.screen-wizard {
+  gap: 10px;
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+}
+
 .wizard-progress {
   font-size: 0.8rem;
   color: var(--fg-terciario);
   letter-spacing: 0.02em;
   text-transform: uppercase;
   margin: 0;
+  flex-shrink: 0;
 }
 
 .wizard-title {
-  font-size: 1.35rem;
+  font-size: 1.25rem;
   font-weight: 600;
   color: var(--fg-hero);
   margin: 0;
   line-height: 1.25;
+  flex-shrink: 0;
 }
 
 .wizard-hint {
   margin: 0;
   color: var(--fg-secundario);
-  font-size: 0.95rem;
-  line-height: 1.4;
+  font-size: 0.9rem;
+  line-height: 1.35;
 }
 
 .wizard-body {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 10px;
   flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.screen-wizard .tela-footer,
+.screen-wizard .lancar-erro {
+  flex-shrink: 0;
+}
+
+.screen-wizard .tela-footer {
+  margin-top: 0;
 }
 
 .wizard-section {
-  margin: 12px 0 0;
-  font-size: 13px;
+  margin: 0;
+  font-size: 12px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   font-family: var(--mono);
   color: var(--fg-secundario);
 }
 
+.wizard-fixed > .wizard-section:not(:first-child) {
+  margin-top: 4px;
+}
+
 .wizard-list,
 .wizard-fixed {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .wizard-row {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
 }
 
+/* Cotidiano: name + amount share a row when there's room; they wrap
+   instead of crushing long labels on a narrow phone. */
 .wizard-name {
+  flex: 1 1 8rem;
+  min-width: 0;
   background: var(--surface-pill);
   border: 1px solid var(--border);
   border-radius: 10px;
   color: var(--fg);
-  padding: 10px 12px;
+  padding: 8px 10px;
+  min-height: 44px;
   font: inherit;
 }
 
@@ -953,7 +987,21 @@ body {
   background: var(--surface-pill);
   border: 1px solid var(--border);
   border-radius: 10px;
-  padding: 8px 12px;
+  padding: 8px 10px;
+  min-height: 44px;
+}
+
+.wizard-body > .wizard-money {
+  padding: 12px 14px;
+}
+
+.wizard-row .wizard-money {
+  flex: 1 1 7.5rem;
+  min-width: 0;
+}
+
+.wizard-row-cat .wizard-money {
+  flex: 0 1 8.5rem;
 }
 
 .wizard-money span {
@@ -962,6 +1010,7 @@ body {
 
 .wizard-money input {
   flex: 1;
+  min-width: 0;
   border: 0;
   background: transparent;
   color: var(--fg);
@@ -970,22 +1019,32 @@ body {
   outline: none;
 }
 
+/* Fixos: name keeps the full first line (legible). Day, amount and
+   remove share the second — compact without forcing four stacked fields. */
+.wizard-row-fixed .wizard-name {
+  flex: 1 1 100%;
+}
+
 .wizard-day {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  flex: 0 0 auto;
   color: var(--fg-secundario);
-  font-size: 0.9rem;
+  font-size: 0.85rem;
 }
 
 .wizard-day input {
-  width: 4.5rem;
+  width: 3.25rem;
   background: var(--surface-pill);
   border: 1px solid var(--border);
   border-radius: 10px;
   color: var(--fg);
-  padding: 10px 12px;
+  padding: 8px 6px;
+  min-height: 44px;
   font: inherit;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
 }
 
 .wizard-link {
@@ -999,11 +1058,23 @@ body {
   text-decoration: underline;
 }
 
+.wizard-remove {
+  flex: 0 0 auto;
+  padding: 8px 2px;
+  font-size: 0.85rem;
+}
+
 .wizard-running,
-.wizard-compare-row {
+.wizard-actual {
   margin: 0;
   color: var(--fg-secundario);
-  font-size: 0.9rem;
+  font-size: 0.85rem;
+}
+
+.wizard-actual {
+  flex: 1 0 100%;
+  color: var(--fg-terciario);
+  font-variant-numeric: tabular-nums;
 }
 
 .wizard-summary {

@@ -202,11 +202,7 @@ function paint(app: HTMLDivElement, state: WizardState): void {
       state.mode === 'primeiro-uso'
         ? 'Por alto. A média disso no mês vira uma prévia do diário. Zero em alguma categoria tudo bem.'
         : 'Ajuste por alto o que mudou. A média no mês continua sendo a prévia do diário.';
-    if (state.mode === 'recalibrar') {
-      body.append(hint, compareList(state), categoryEditor(state, setState));
-    } else {
-      body.append(hint, categoryEditor(state, setState));
-    }
+    body.append(hint, categoryEditor(state, setState));
     footer.append(
       secondaryBtn('Voltar', () => setState({ ...state, step: step - 1, error: '' })),
       primaryBtn(
@@ -379,7 +375,7 @@ function fixedRowList(
 
   for (const rowData of rows) {
     const row = document.createElement('div');
-    row.className = 'wizard-row';
+    row.className = 'wizard-row wizard-row-fixed';
 
     const name = document.createElement('input');
     name.className = 'wizard-name';
@@ -416,7 +412,7 @@ function fixedRowList(
 
     const remove = document.createElement('button');
     remove.type = 'button';
-    remove.className = 'wizard-link';
+    remove.className = 'wizard-link wizard-remove';
     remove.textContent = 'Remover';
     remove.addEventListener('click', () => {
       onChange(rows.filter((r) => r.id !== rowData.id));
@@ -446,7 +442,7 @@ function categoryEditor(state: WizardState, setState: (s: WizardState) => void):
 
   for (const cat of state.categories) {
     const row = document.createElement('div');
-    row.className = 'wizard-row';
+    row.className = 'wizard-row wizard-row-cat';
     const name = document.createElement('input');
     name.className = 'wizard-name';
     name.value = cat.name;
@@ -469,6 +465,9 @@ function categoryEditor(state: WizardState, setState: (s: WizardState) => void):
       });
     });
     row.append(name, money);
+    if (state.mode === 'recalibrar' && (cat.plannedCents !== 0n || cat.actualCents !== 0n)) {
+      row.append(actualLine(cat));
+    }
     list.append(row);
   }
 
@@ -496,28 +495,16 @@ function categoryEditor(state: WizardState, setState: (s: WizardState) => void):
   return list;
 }
 
-function compareList(state: WizardState): HTMLElement {
-  const wrap = document.createElement('div');
-  wrap.className = 'wizard-compare';
-  const title = document.createElement('h2');
-  title.className = 'wizard-section';
-  title.textContent = 'Últimos 30 dias';
-  wrap.append(title);
-  for (const cat of state.categories) {
-    if (cat.plannedCents === 0n && cat.actualCents === 0n) continue;
-    const row = document.createElement('p');
-    row.className = 'wizard-compare-row';
-    const delta = cat.actualCents - cat.plannedCents;
-    const deltaTxt =
-      delta === 0n
-        ? 'no plano'
-        : `${delta > 0n ? '+' : '−'}R$ ${formatAmount(delta < 0n ? -delta : delta)}`;
-    row.textContent =
-      `${cat.name}: planejado R$ ${formatAmount(cat.plannedCents)} · ` +
-      `real R$ ${formatAmount(cat.actualCents)} (${deltaTxt})`;
-    wrap.append(row);
-  }
-  return wrap;
+function actualLine(cat: { plannedCents: bigint; actualCents: bigint }): HTMLElement {
+  const row = document.createElement('p');
+  row.className = 'wizard-actual';
+  const delta = cat.actualCents - cat.plannedCents;
+  const deltaTxt =
+    delta === 0n
+      ? 'no plano'
+      : `${delta > 0n ? '+' : '−'}R$ ${formatAmount(delta < 0n ? -delta : delta)}`;
+  row.textContent = `30d R$ ${formatAmount(cat.actualCents)} (${deltaTxt})`;
+  return row;
 }
 
 function confirmSummary(state: WizardState): HTMLElement {
