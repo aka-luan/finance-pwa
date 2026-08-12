@@ -126,8 +126,8 @@ body {
   flex-direction: column;
 }
 
-/* O padding de topo do design (62–64px) já é a folga da barra de status;
-   em aparelhos com notch o recorte é maior, daí o max() em vez de somar. */
+/* Safe-area no topo: em aparelhos com notch o recorte é maior que o
+   padding base, daí o max() em vez de somar. */
 .screen {
   padding: max(24px, env(safe-area-inset-top)) var(--lado) max(24px, env(safe-area-inset-bottom));
   flex: 1;
@@ -136,7 +136,9 @@ body {
 /* Tela Hoje */
 
 .screen-hoje {
-  padding-top: max(64px, calc(env(safe-area-inset-top) + 16px));
+  /* Folga curta acima do wordmark: o número grande precisa começar alto,
+     e 64px deixava um vazio morto entre a barra de status e "TERMÔMETRO". */
+  padding-top: max(48px, calc(env(safe-area-inset-top) + 10px));
   /* Espaço para o FAB, que é fixo e não empurra o conteúdo. */
   padding-bottom: calc(110px + env(safe-area-inset-bottom));
 }
@@ -145,7 +147,7 @@ body {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  margin-bottom: 26px;
+  margin-bottom: 14px;
 }
 
 .hoje-wordmark {
@@ -164,7 +166,7 @@ body {
 }
 
 .hoje-hero {
-  margin-bottom: 22px;
+  margin-bottom: 16px;
 }
 
 .hoje-hero-label {
@@ -213,21 +215,20 @@ body {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  padding: 12px 0;
+  padding: 8px 0;
   border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 22px;
+  margin-bottom: 18px;
 }
 
 .saldo-label {
-  font-size: 13px;
-  color: var(--fg-secundario);
+  font-size: 12px;
+  color: var(--fg-terciario);
 }
 
 .saldo-valor {
-  font-size: 17px;
-  font-weight: 500;
-  color: var(--fg-saldo);
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--fg-secundario);
 }
 
 /* Marcos: quatro colunas iguais (SPEC.md §6). Lado a lado, a curva do ano
@@ -236,13 +237,13 @@ body {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 10px;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .marco {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 3px;
   min-width: 0;
 }
 
@@ -250,30 +251,43 @@ body {
    isso os valores das quatro colunas não ficariam na mesma linha de base. */
 .marco-label {
   font-size: 10.5px;
-  line-height: 1.25;
-  color: var(--fg-terciario);
+  line-height: 1.2;
+  color: var(--fg-fraco);
   letter-spacing: 0.01em;
-  height: 26px;
+  height: 25px;
+}
+
+/* Valor + data como um bloco só — o período acima é só a legenda. */
+.marco-leitura {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
 }
 
 .marco-valor {
   font-size: 15px;
   font-weight: 500;
   letter-spacing: -0.01em;
+  line-height: 1.15;
+}
+
+.marco-data {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--fg-muted);
+  letter-spacing: 0.04em;
+  line-height: 1.2;
 }
 
 .marco-delta {
   font-size: 11px;
   letter-spacing: -0.01em;
   color: var(--ambar);
-  min-height: 15px;
+  line-height: 1.2;
 }
 
-.marco-data {
-  font-family: var(--mono);
-  font-size: 10px;
-  color: var(--fg-fraco);
-  letter-spacing: 0.04em;
+.marco-delta:empty {
+  display: none;
 }
 
 /* Nas telas mais estreitas (iPhone SE/mini, 375px) um saldo negativo de
@@ -296,9 +310,9 @@ body {
   align-items: baseline;
   gap: 6px;
   flex-wrap: wrap;
-  padding-top: 14px;
+  padding-top: 12px;
   border-top: 1px solid var(--border);
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
 .pior-label,
@@ -323,9 +337,9 @@ body {
 .simular {
   background: var(--surface-card);
   border: 1px solid #20262a;
-  border-radius: 14px;
-  padding: 16px 16px 14px;
-  margin-bottom: 16px;
+  border-radius: 12px;
+  padding: 13px 14px 12px;
+  margin-bottom: 14px;
 }
 
 .simular-ativo {
@@ -351,6 +365,12 @@ body {
   gap: 6px;
   flex: 1;
   justify-content: flex-end;
+  border-bottom: 1px solid var(--border-control);
+  padding-bottom: 2px;
+}
+
+.simular-ativo .simular-campo {
+  border-bottom-color: var(--ambar-border);
 }
 
 .simular-moeda {
@@ -365,16 +385,29 @@ body {
   border: none;
   outline: none;
   text-align: right;
-  font-size: 26px;
+  font-size: 24px;
   font-weight: 600;
   color: var(--ambar);
+  caret-color: var(--ambar);
   padding: 0;
+}
+
+/* O placeholder global é quase a cor do card — aqui o 0,00 é o valor em
+   repouso de um campo editável, então fica na família âmbar, só mais baixo. */
+.simular-input::placeholder {
+  color: color-mix(in srgb, var(--ambar) 72%, var(--fg-muted));
+  opacity: 1;
+}
+
+.simular-input:disabled {
+  opacity: 1;
+  color: var(--ambar);
 }
 
 .simular-chips {
   display: flex;
   gap: 8px;
-  margin-top: 12px;
+  margin-top: 10px;
 }
 
 .simular-chip {
@@ -382,7 +415,7 @@ body {
   background: var(--surface-card);
   border: 1px solid var(--border-control);
   border-radius: 8px;
-  padding: 7px 0;
+  padding: 6px 0;
   font-family: var(--mono);
   font-size: 12px;
   color: var(--fg-secundario);
@@ -443,23 +476,36 @@ body {
    o FAB, que é fixo. */
 .hoje-secundario {
   margin-top: auto;
-  padding-top: 20px;
+  padding-top: 16px;
   padding-right: 130px;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 2px;
+  gap: 4px;
 }
 
 .btn-config {
   background: none;
   border: none;
-  color: var(--fg-muted);
-  font-size: 12.5px;
-  padding: 4px 0;
+  color: var(--fg-secundario);
+  font-size: 13px;
+  padding: 8px 12px;
+  margin-left: -12px;
+  min-height: 40px;
+  border-radius: 8px;
   text-align: left;
-  text-decoration: underline;
-  text-underline-offset: 0.3em;
+  text-decoration: none;
+}
+
+.btn-config:hover,
+.btn-config:active {
+  background: var(--surface-pill);
+  color: var(--fg-secundario-claro);
+}
+
+.btn-config:focus-visible {
+  outline: 1px solid var(--border-control);
+  outline-offset: 0;
 }
 
 /* FAB "Lançar": fixo no canto inferior direito, na zona do polegar. */
