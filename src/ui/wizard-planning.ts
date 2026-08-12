@@ -41,6 +41,8 @@ import {
 
 const STEPS = ['Saldo', 'Fixos', 'Cotidiano', 'Resumo'] as const;
 
+let dayPickerAbort: AbortController | null = null;
+
 export function renderWizardPlanning(app: HTMLDivElement, mode: WizardMode): void {
   app.innerHTML = '';
   app.className = 'screen screen-wizard';
@@ -184,7 +186,7 @@ function paint(app: HTMLDivElement, state: WizardState): void {
     title.textContent = 'O que entra e sai todo mês?';
     const hint = document.createElement('p');
     hint.className = 'wizard-hint';
-    hint.textContent = 'Não entram no diário.';
+    hint.textContent = 'Entram automaticamente todo mês.';
     body.append(hint, fixedEditor(state, setState));
     footer.append(
       secondaryBtn('Voltar', () => setState({ ...state, step: step - 1, error: '' })),
@@ -324,6 +326,7 @@ function moneyInput(cents: bigint, onCommit: (c: bigint) => void): HTMLElement {
   prefix.textContent = 'R$';
   const input = document.createElement('input');
   input.inputMode = 'decimal';
+  input.setAttribute('aria-label', 'Valor');
   input.value = moneyFieldValue(cents);
   input.placeholder = '0,00';
   input.addEventListener('change', () => {
@@ -462,6 +465,65 @@ function moreMenu(onRemove: () => void): HTMLElement {
   return wrap;
 }
 
+function openDayPicker(current: number, onPick: (day: number) => void): void {
+  document.querySelector('.wizard-day-sheet-overlay')?.remove();
+  dayPickerAbort?.abort();
+  dayPickerAbort = new AbortController();
+  const { signal } = dayPickerAbort;
+
+  const overlay = document.createElement('div');
+  overlay.className = 'wizard-day-sheet-overlay';
+
+  const sheet = document.createElement('div');
+  sheet.className = 'wizard-day-sheet';
+  sheet.setAttribute('role', 'dialog');
+  sheet.setAttribute('aria-label', 'Dia do mês');
+
+  const title = document.createElement('p');
+  title.className = 'wizard-day-sheet-title';
+  title.textContent = 'Dia do mês';
+
+  const grid = document.createElement('div');
+  grid.className = 'wizard-day-sheet-grid';
+
+  const close = (): void => {
+    overlay.remove();
+    dayPickerAbort?.abort();
+    dayPickerAbort = null;
+  };
+
+  for (let d = 1; d <= 31; d++) {
+    const cell = document.createElement('button');
+    cell.type = 'button';
+    cell.textContent = String(d);
+    if (d === current) {
+      cell.classList.add('is-selected');
+      cell.setAttribute('aria-current', 'true');
+    }
+    cell.addEventListener('click', () => {
+      close();
+      onPick(d);
+    });
+    grid.append(cell);
+  }
+
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) close();
+  });
+  document.addEventListener(
+    'keydown',
+    (e) => {
+      if (e.key === 'Escape') close();
+    },
+    { signal },
+  );
+
+  sheet.append(title, grid);
+  overlay.append(sheet);
+  document.body.append(overlay);
+  sheet.querySelector<HTMLButtonElement>('.is-selected')?.focus();
+}
+
 function fixedRowList(
   rows: FixedRow[],
   onChange: (rows: FixedRow[]) => void,
@@ -489,29 +551,24 @@ function fixedRowList(
       onChange(rows.map((r) => (r.id === rowData.id ? { ...r, cents } : r)));
     });
 
-    const dayWrap = document.createElement('label');
-    dayWrap.className = 'wizard-day';
-    const dayPrefix = document.createElement('span');
-    dayPrefix.textContent = 'dia';
-    const day = document.createElement('input');
-    day.type = 'number';
-    day.min = '1';
-    day.max = '31';
-    day.value = String(rowData.dayOfMonth);
-    day.setAttribute('aria-label', 'Dia do mês');
-    day.addEventListener('change', () => {
-      const n = Number(day.value);
-      const dayOfMonth = Number.isInteger(n) && n >= 1 && n <= 31 ? n : rowData.dayOfMonth;
-      day.value = String(dayOfMonth);
-      onChange(rows.map((r) => (r.id === rowData.id ? { ...r, dayOfMonth } : r)));
+    const dayBtn = document.createElement('button');
+    dayBtn.type = 'button';
+    dayBtn.className = 'wizard-day-btn';
+    dayBtn.textContent = `Dia ${rowData.dayOfMonth} ▾`;
+    dayBtn.setAttribute('aria-label', `Dia do mês: ${rowData.dayOfMonth}`);
+    dayBtn.setAttribute('aria-haspopup', 'dialog');
+    dayBtn.addEventListener('click', () => {
+      closeFixedMenus();
+      openDayPicker(rowData.dayOfMonth, (dayOfMonth) => {
+        onChange(rows.map((r) => (r.id === rowData.id ? { ...r, dayOfMonth } : r)));
+      });
     });
-    dayWrap.append(dayPrefix, day);
 
     row.append(
       name,
       moreMenu(() => onChange(rows.filter((r) => r.id !== rowData.id))),
       money,
-      dayWrap,
+      dayBtn,
     );
     list.append(row);
   }
