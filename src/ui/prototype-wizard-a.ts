@@ -5,15 +5,16 @@
 
 import { formatAmount } from './format';
 import {
+  type FixedRow,
   type WizardState,
   canConfirm,
   dailyEstimate,
   fixedNet,
   inflowTotal,
   leftoverAfterPlan,
-  outflowTotal,
   moneyFieldValue,
   monthlyTotal,
+  outflowTotal,
   parseMoneyInput,
   previewToday,
 } from './prototype-wizard-state';
@@ -75,7 +76,7 @@ export function renderVariantA(
     const hint = document.createElement('p');
     hint.className = 'proto-hint';
     hint.textContent =
-      'Salário, freelas, aluguel, contas… viram entrada ou saída. Não entram no diário. Pode deixar zero.';
+      'Salário, freelas, aluguel, contas… viram recorrência na conta (com dia do mês). Não entram no diário. Pode deixar zero.';
     body.append(hint, fixedEditor(state, setState));
     footer.append(
       secondaryBtn('Voltar', () => go(step - 1)),
@@ -139,9 +140,9 @@ function moneyInput(cents: bigint, onCommit: (c: bigint) => void): HTMLElement {
   return wrap;
 }
 
-function namedMoneyList(
-  rows: { id: string; name: string; cents: bigint }[],
-  onChange: (rows: { id: string; name: string; cents: bigint }[]) => void,
+function fixedRowList(
+  rows: FixedRow[],
+  onChange: (rows: FixedRow[]) => void,
   addLabel: string,
 ): HTMLElement {
   const list = document.createElement('div');
@@ -149,7 +150,7 @@ function namedMoneyList(
 
   for (const rowData of rows) {
     const row = document.createElement('div');
-    row.className = 'proto-cat-row';
+    row.className = 'proto-cat-row proto-fixed-row';
     const name = document.createElement('input');
     name.className = 'proto-cat-name';
     name.value = rowData.name;
@@ -160,10 +161,27 @@ function namedMoneyList(
         ),
       );
     });
+    const dayWrap = document.createElement('label');
+    dayWrap.className = 'proto-day';
+    const dayPrefix = document.createElement('span');
+    dayPrefix.textContent = 'Dia';
+    const day = document.createElement('input');
+    day.type = 'number';
+    day.min = '1';
+    day.max = '31';
+    day.value = String(rowData.dayOfMonth);
+    day.setAttribute('aria-label', 'Dia do mês');
+    day.addEventListener('change', () => {
+      const n = Number(day.value);
+      const dayOfMonth = Number.isInteger(n) && n >= 1 && n <= 31 ? n : rowData.dayOfMonth;
+      day.value = String(dayOfMonth);
+      onChange(rows.map((r) => (r.id === rowData.id ? { ...r, dayOfMonth } : r)));
+    });
+    dayWrap.append(dayPrefix, day);
     const money = moneyInput(rowData.cents, (cents) => {
       onChange(rows.map((r) => (r.id === rowData.id ? { ...r, cents } : r)));
     });
-    row.append(name, money);
+    row.append(name, dayWrap, money);
     list.append(row);
   }
 
@@ -172,7 +190,10 @@ function namedMoneyList(
   add.className = 'proto-linkish';
   add.textContent = addLabel;
   add.addEventListener('click', () => {
-    onChange([...rows, { id: `n${Date.now()}`, name: 'Novo', cents: 0n }]);
+    onChange([
+      ...rows,
+      { id: `n${Date.now()}`, name: 'Novo', cents: 0n, dayOfMonth: 1 },
+    ]);
   });
   list.append(add);
   return list;
@@ -190,9 +211,9 @@ function fixedEditor(state: WizardState, setState: (s: WizardState) => void): HT
   wrap.className = 'proto-fixed';
   wrap.append(
     sectionLabel('Entradas fixas'),
-    namedMoneyList(state.inflows, (inflows) => setState({ ...state, inflows }), '+ entrada'),
+    fixedRowList(state.inflows, (inflows) => setState({ ...state, inflows }), '+ entrada'),
     sectionLabel('Saídas fixas'),
-    namedMoneyList(state.outflows, (outflows) => setState({ ...state, outflows }), '+ conta'),
+    fixedRowList(state.outflows, (outflows) => setState({ ...state, outflows }), '+ conta'),
   );
   const total = document.createElement('p');
   total.className = 'proto-running';

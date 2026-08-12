@@ -51,7 +51,7 @@ Uma única `db.transaction` no confirm do primeiro uso / recalibrar:
 2. `account_anchor` com o saldo informado, data = hoje (`America/Belem`) — mesma semântica de “Acertar saldo”: saldo no **início** do dia; no primeiro uso o banco está vazio, então o valor digitado é o ponto de partida.
 3. `monthly_budget` + `monthly_budget_line` com `effective_from = hoje` (#17).
 4. `daily_estimate` com o mesmo `effective_from` e `amount_cents = round_half_up(Σ/30)` (#16).
-5. Entradas/saídas fixas → recorrências, conforme #20 (mesmo commit quando #20 fechar).
+5. Entradas/saídas fixas → recorrências de conta, conforme #20 / ADR 0005 (mesmo commit).
 
 Falha em qualquer passo → rollback inteiro → `needsFirstRun` permanece verdadeiro. **Proibido** gravar âncora ou estimativa “para ir adiantando” entre passos do wizard.
 
@@ -76,7 +76,7 @@ Isso atende “sem gravações parciais” sem um segundo modelo de rascunho no 
 ## O que isto não decide
 
 - Schema/`BACKUP_TABLES` para `monthly_budget*` (#19).
-- Mapeamento fino fixos → `recurrence` (#20), só que entra no **mesmo** commit.
+- Mapeamento fino fixos → `recurrence` — fechado em #20 / ADR 0005; entra no **mesmo** commit.
 - Textos de loading / erro de restore (tom já no #15).
 
 ## Próximo nevoeiro afiado

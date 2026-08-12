@@ -19,3 +19,7 @@ _Evitar_: Média mensal, despesas fixas
 **Estimativa diária**:
 Valor diário de referência obtido ao dividir por 30 o orçamento mensal de gastos cotidianos. Persistida em `daily_estimate` (vigência por `effective_from`); é a entrada da projeção — distinta da composição por categoria.
 _Evitar_: Média de gasto diário, limite diário
+
+**Entrada/saída fixa**:
+Valor que se repete todo mês na conta (salário, aluguel, contas), planejado no wizard e persistido como `recurrence` com `target = 'account'`. Não compõe o orçamento mensal de gastos cotidianos nem a estimativa diária; ver ADR 0005.
+_Evitar_: Despesa fixa no diário, recorrência de cartão, custo fixo
