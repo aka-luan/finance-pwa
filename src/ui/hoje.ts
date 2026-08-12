@@ -110,7 +110,8 @@ export function renderHoje(app: HTMLDivElement, undo?: UndoState): void {
 
   // "Acesso secundário" (SPEC.md §6): a linha do tempo completa, fora da
   // tela principal — mesmo tratamento discreto do botão de Configurações,
-  // para não competir com saldo/marcos/simulação.
+  // para não competir com saldo/marcos/simulação. Sem sublinhado de link:
+  // a área de toque é que marca o controle, não a decoração do texto.
   const linhaTempoBtn = document.createElement('button');
   linhaTempoBtn.type = 'button';
   linhaTempoBtn.className = 'btn-config';
@@ -479,8 +480,18 @@ function renderMarcos(
     valor.textContent = formatAmount(marco.balance_cents);
     valor.classList.toggle('valor-negativo', marco.balance_cents < 0n);
 
-    // Sempre presente, mesmo vazio: sem a linha reservada as quatro colunas
-    // pulariam de altura ao começar a simular.
+    const data = document.createElement('div');
+    data.className = 'marco-data';
+    data.textContent = formatDateSlash(marco.day);
+
+    // Número e data colados: o olho lê "−25,55 em 31/ago" como um bloco,
+    // com o período (label) só como legenda acima. O delta fica fora desse
+    // bloco — e some quando não há simulação, senão a linha vazia separava
+    // o valor da data e as quatro colunas pareciam três fatos soltos.
+    const leitura = document.createElement('div');
+    leitura.className = 'marco-leitura';
+    leitura.append(valor, data);
+
     const delta = document.createElement('div');
     delta.className = 'marco-delta';
     if (simulating) {
@@ -489,11 +500,7 @@ function renderMarcos(
       delta.textContent = `${diff > 0n ? '+' : ''}${formatAmount(diff)}`;
     }
 
-    const data = document.createElement('div');
-    data.className = 'marco-data';
-    data.textContent = formatDateSlash(marco.day);
-
-    item.append(label, valor, delta, data);
+    item.append(label, leitura, delta);
     container.append(item);
   }
 }
