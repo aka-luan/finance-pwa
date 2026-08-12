@@ -60,16 +60,34 @@
   box-sizing: border-box;
 }
 
-/* Fast repeated taps on the numpad otherwise register as Safari's
-   double-tap-to-zoom gesture. This disables that gesture on buttons only —
-   pinch-zoom and scrolling elsewhere are untouched. */
-button {
+/* Safari treats a fast second tap as zoom. `manipulation` keeps pan and
+   pinch; it only drops double-tap-to-zoom. Applied on the root so every
+   screen inherits the hit-testing intersection, and on controls because
+   iOS still zooms when the target itself is `auto`. */
+html {
   touch-action: manipulation;
+}
+
+button,
+input,
+select,
+textarea,
+label,
+a {
+  touch-action: manipulation;
+}
+
+button,
+input {
   font-family: inherit;
 }
 
-input {
-  font-family: inherit;
+/* iOS Safari zooms the page when a focused field computes under 16px.
+   Keep that floor here; screens that want a larger field set it themselves. */
+input,
+select,
+textarea {
+  font-size: 16px;
 }
 
 input::placeholder {
@@ -977,7 +995,6 @@ body {
   color: var(--fg);
   padding: 8px 10px;
   min-height: 44px;
-  font: inherit;
 }
 
 .wizard-money {
@@ -1014,7 +1031,6 @@ body {
   border: 0;
   background: transparent;
   color: var(--fg);
-  font: inherit;
   font-variant-numeric: tabular-nums;
   outline: none;
 }
@@ -1042,7 +1058,6 @@ body {
   color: var(--fg);
   padding: 8px 6px;
   min-height: 44px;
-  font: inherit;
   text-align: center;
   font-variant-numeric: tabular-nums;
 }
@@ -1275,7 +1290,6 @@ body {
 .recorrencia-dia-input {
   width: 100%;
   padding: 12px;
-  font-size: 15px;
   border-radius: 10px;
   border: 1px solid var(--border-control);
   background: var(--surface-card);
