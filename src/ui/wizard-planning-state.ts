@@ -102,13 +102,6 @@ export function dailyEstimateFromTotal(total: bigint): bigint {
   return roundHalfUpDiv(total, 30n);
 }
 
-/** Inclusive remaining calendar days in the civil month of `today` (YYYY-MM-DD). */
-export function remainingDaysInMonth(today: string): number {
-  const [year, month, day] = today.split('-').map(Number);
-  const last = new Date(Date.UTC(year as number, month as number, 0)).getUTCDate();
-  return last - (day as number) + 1;
-}
-
 export function previewToday(state: WizardState): bigint {
   return dailyEstimate(state) - state.spentTodayCents;
 }

@@ -24,9 +24,8 @@ import {
   formatDayRange,
   formatMonthName,
 } from './format';
+import { renderForecastNav } from './destinations';
 import { renderLancar } from './lancar';
-import { renderPlanejamento } from './planejamento';
-import { renderPrevisao } from './previsao';
 import { push, replace } from './nav';
 import { renderUndoToast, type UndoState } from './undo';
 
@@ -105,34 +104,13 @@ export function renderHoje(app: HTMLDivElement, undo?: UndoState): void {
   const pendentesEl = document.createElement('div');
   pendentesEl.className = 'pendentes';
 
-  // Termômetro responde o hoje; Previsão responde o que vem depois.
-  // Mesmo tratamento discreto do botão de Configurações, para não
-  // competir com o número. Sem sublinhado de link: a área de toque é
-  // que marca o controle, não a decoração do texto.
-  const previsaoBtn = document.createElement('button');
-  previsaoBtn.type = 'button';
-  previsaoBtn.className = 'btn-config';
-  previsaoBtn.textContent = 'Ver previsão completa';
-  previsaoBtn.addEventListener('click', () => push(renderPrevisao));
-
-  const planejamentoBtn = document.createElement('button');
-  planejamentoBtn.type = 'button';
-  planejamentoBtn.className = 'btn-config';
-  planejamentoBtn.textContent = 'Planejamento';
-  planejamentoBtn.addEventListener('click', () => push(renderPlanejamento));
-
-  // Discreet on purpose: the tela is built around the number at the top, and
-  // backup is something the user does occasionally, not daily. Fica depois
-  // do aviso de pendentes, que é o que pede ação hoje.
-  const configBtn = document.createElement('button');
-  configBtn.type = 'button';
-  configBtn.className = 'btn-config';
-  configBtn.textContent = 'Configurações';
-  configBtn.addEventListener('click', () => push(renderConfiguracoes));
-
-  const secundario = document.createElement('div');
-  secundario.className = 'hoje-secundario';
-  secundario.append(previsaoBtn, planejamentoBtn, configBtn);
+  // Termômetro / Previsão / Planejamento are the three forecast surfaces.
+  // Configurações stays a discreet extra — backup and cartões, not a
+  // fourth reading of the same money. Sem sublinhado de link: a área de
+  // toque é que marca o controle, não a decoração do texto.
+  const secundario = renderForecastNav('termometro', [
+    { label: 'Configurações', onClick: () => push(renderConfiguracoes) },
+  ]);
 
   app.append(
     topo,

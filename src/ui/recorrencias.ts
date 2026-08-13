@@ -11,10 +11,10 @@ import { formatCents } from './format';
 import { back, push, replace } from './nav';
 import { createAmountField, createNumpad } from './numpad';
 
-// Tela Recorrências (issue #5): CRUD de entrada/saída em dia fixo do mês,
-// alcançável a partir de Configurações. A regra "real vence projeção" já
-// está implementada no timeline/balance_on de schema.sql — esta tela só
-// precisa gravar a recorrência corretamente para que ela entre em vigor.
+// CRUD dedicado de recorrência de conta (issue #5). Planejamento é o
+// destino do produto para a mesma tabela — esta tela permanece como
+// editor pontual (numpad, inativas) caso precise ser reaberta; a
+// navegação atual redireciona Configurações para Planejamento.
 export function renderRecorrencias(app: HTMLDivElement): void {
   app.innerHTML = '';
   app.className = 'screen screen-recorrencias';

@@ -13,12 +13,11 @@ import { formatTimestamp } from './format';
 import { renderHoje } from './hoje';
 import { back, push, reset } from './nav';
 import { renderPlanejamento } from './planejamento';
-import { renderRecorrencias } from './recorrencias';
 import { renderWizardPlanning } from './wizard-planning';
 
-// Tela Configurações, por ora só backup (SPEC.md §5). Manual export and
-// restore, reachable without devtools — see docs/adr/0001-backup-json-manual.md
-// for why manual and why JSON.
+// Configurações: cartões, atalho ao Planejamento, estimativa, backup.
+// Recorrências de conta não ficam aqui — Planejamento é o editor.
+// Backup manual em JSON: docs/adr/0001-backup-json-manual.md.
 export function renderConfiguracoes(app: HTMLDivElement): void {
   app.innerHTML = '';
   app.className = 'screen screen-config';
@@ -26,16 +25,6 @@ export function renderConfiguracoes(app: HTMLDivElement): void {
   const title = document.createElement('h1');
   title.className = 'config-title';
   title.textContent = 'Configurações';
-
-  const recorrenciasTitle = document.createElement('h2');
-  recorrenciasTitle.className = 'config-secao';
-  recorrenciasTitle.textContent = 'Recorrências';
-
-  const recorrenciasBtn = document.createElement('button');
-  recorrenciasBtn.type = 'button';
-  recorrenciasBtn.className = 'btn-bloco';
-  recorrenciasBtn.textContent = 'Gerenciar recorrências';
-  recorrenciasBtn.addEventListener('click', () => push(renderRecorrencias));
 
   const cartoesTitle = document.createElement('h2');
   cartoesTitle.className = 'config-secao';
@@ -51,11 +40,16 @@ export function renderConfiguracoes(app: HTMLDivElement): void {
   planejamentoTitle.className = 'config-secao';
   planejamentoTitle.textContent = 'Planejamento';
 
-  const recalibrarBtn = document.createElement('button');
-  recalibrarBtn.type = 'button';
-  recalibrarBtn.className = 'btn-bloco';
-  recalibrarBtn.textContent = 'Recalibrar planejamento';
-  recalibrarBtn.addEventListener('click', () => push(renderPlanejamento));
+  const planejamentoExplicacao = document.createElement('p');
+  planejamentoExplicacao.className = 'config-explicacao';
+  planejamentoExplicacao.textContent =
+    'Entradas fixas, contas e gastos cotidianos que alimentam a previsão.';
+
+  const planejamentoBtn = document.createElement('button');
+  planejamentoBtn.type = 'button';
+  planejamentoBtn.className = 'btn-bloco';
+  planejamentoBtn.textContent = 'Abrir planejamento';
+  planejamentoBtn.addEventListener('click', () => push(renderPlanejamento));
 
   const estimativaTitle = document.createElement('h2');
   estimativaTitle.className = 'config-secao';
@@ -262,12 +256,11 @@ export function renderConfiguracoes(app: HTMLDivElement): void {
 
   app.append(
     title,
-    recorrenciasTitle,
-    recorrenciasBtn,
     cartoesTitle,
     cartoesBtn,
     planejamentoTitle,
-    recalibrarBtn,
+    planejamentoExplicacao,
+    planejamentoBtn,
     estimativaTitle,
     revisarBtn,
     sectionTitle,

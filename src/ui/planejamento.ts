@@ -12,8 +12,8 @@ import {
   todayBelem,
 } from '../db/queries.mjs';
 import { debounce } from './debounce';
+import { renderForecastNav } from './destinations';
 import { formatAmount } from './format';
-import { back } from './nav';
 import {
   addFixedBtn,
   compactRowList,
@@ -21,11 +21,7 @@ import {
   newFixedRow,
   sectionLabel,
 } from './planning-rows';
-import {
-  type FixedRow,
-  dailyEstimateFromTotal,
-  remainingDaysInMonth,
-} from './wizard-planning-state';
+import { type FixedRow, dailyEstimateFromTotal } from './wizard-planning-state';
 
 type PlanejamentoState = {
   today: string;
@@ -48,7 +44,7 @@ export function renderPlanejamento(app: HTMLDivElement): void {
   const status = document.createElement('p');
   status.className = 'config-status';
   status.textContent = 'Carregando…';
-  app.append(status);
+  app.append(status, renderForecastNav('planejamento'));
 
   void (async () => {
     try {
@@ -158,13 +154,7 @@ function paint(app: HTMLDivElement, state: PlanejamentoState): void {
   errorEl.className = 'lancar-erro';
   errorEl.textContent = state.error;
 
-  const voltarBtn = document.createElement('button');
-  voltarBtn.type = 'button';
-  voltarBtn.className = 'btn-voltar';
-  voltarBtn.textContent = 'Voltar';
-  voltarBtn.addEventListener('click', () => back());
-
-  app.append(title, hint, body, errorEl, voltarBtn);
+  app.append(title, hint, body, errorEl, renderForecastNav('planejamento'));
 }
 
 function calcFooter(state: PlanejamentoState): HTMLElement {
@@ -172,19 +162,15 @@ function calcFooter(state: PlanejamentoState): HTMLElement {
   wrap.className = 'planejamento-calc';
 
   const total = state.categories.reduce((s, c) => s + c.cents, 0n);
-  const restam = remainingDaysInMonth(state.today);
   const diario = dailyEstimateFromTotal(total);
 
-  wrap.append(
-    calcRow('Gastos previstos', `R$ ${formatAmount(total)}`),
-    calcRow('Restam', `${restam} ${restam === 1 ? 'dia' : 'dias'}`),
-  );
+  wrap.append(calcRow('Gastos previstos', `R$ ${formatAmount(total)}`));
 
   const rule = document.createElement('hr');
   rule.className = 'planejamento-calc-rule';
   wrap.append(rule);
 
-  const suggested = calcRow('Diário sugerido', `R$ ${formatAmount(diario)}`);
+  const suggested = calcRow('Estimativa diária', `R$ ${formatAmount(diario)}`);
   suggested.classList.add('planejamento-calc-sugerido');
   wrap.append(suggested);
   return wrap;

@@ -14,7 +14,7 @@ import {
   formatMonthYear,
   formatSignedAmount,
 } from './format';
-import { back } from './nav';
+import { renderForecastNav } from './destinations';
 import {
   HORIZON_RANGES,
   buildHorizonMonths,
@@ -27,9 +27,10 @@ import {
   type HorizonSummary,
 } from './previsao-horizon.mjs';
 
-// Previsão (issue #9, SPEC.md §6): "acesso secundário" fora da tela
-// principal. O horizonte responde "onde o dinheiro vai estar"; a lista
-// diária embaixo explica o porquê — sem virar a planilha de colunas.
+// Previsão: o ledger da mesma timeline que o Termômetro resume. A
+// pergunta da tela é "o que vai acontecer com meu dinheiro?" — horizonte,
+// saldo dia a dia, movimentos futuros. Planejamento é de onde isso vem;
+// Lançar alimenta o que já aconteceu.
 export function renderPrevisao(app: HTMLDivElement): void {
   app.innerHTML = '';
   app.className = 'screen screen-previsao';
@@ -37,6 +38,10 @@ export function renderPrevisao(app: HTMLDivElement): void {
   const title = document.createElement('h1');
   title.className = 'config-title';
   title.textContent = 'Previsão';
+
+  const hint = document.createElement('p');
+  hint.className = 'wizard-hint';
+  hint.textContent = 'O que vai acontecer com seu dinheiro.';
 
   const status = document.createElement('p');
   status.className = 'config-status';
@@ -49,13 +54,7 @@ export function renderPrevisao(app: HTMLDivElement): void {
   const list = document.createElement('div');
   list.className = 'previsao-lista';
 
-  const voltarBtn = document.createElement('button');
-  voltarBtn.type = 'button';
-  voltarBtn.className = 'btn-voltar';
-  voltarBtn.textContent = 'Voltar';
-  voltarBtn.addEventListener('click', () => back());
-
-  app.append(title, status, horizonte, list, voltarBtn);
+  app.append(title, hint, status, horizonte, list, renderForecastNav('previsao'));
 
   void loadPrevisao(status, horizonte, list);
 }
