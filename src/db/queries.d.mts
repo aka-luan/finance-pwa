@@ -38,6 +38,18 @@ export interface TimelineDay {
 
 export function getTimeline(db: PGlite, today: string): Promise<TimelineDay[]>;
 
+export type TimelineMovementSource = 'transaction' | 'recurrence' | 'bill' | 'diario';
+
+export interface TimelineMovement {
+  day: string;
+  source: TimelineMovementSource;
+  kind: 'entrada' | 'saida' | 'diario';
+  label: string;
+  signed_cents: bigint;
+}
+
+export function getTimelineMovements(db: PGlite, today: string): Promise<TimelineMovement[]>;
+
 export interface TransactionItem {
   amountCents: bigint;
   categoryId?: string;

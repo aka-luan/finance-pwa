@@ -66,14 +66,25 @@ export async function getWorstPoint(db, today, whatIf = []) {
   return rows[0];
 }
 
-// Linha do tempo completa (issue #9, SPEC.md §6): acesso secundário aos 12
-// meses dia a dia, direto de timeline() — milestones/worst_point já usam
-// timeline_sim para os resumos da Tela Hoje; esta tela mostra a janela
-// inteira, sem simulação.
+// Previsão (issue #9, SPEC.md §6): acesso secundário aos 12 meses dia a
+// dia, direto de timeline() — milestones/worst_point já usam timeline_sim
+// para os resumos da Tela Hoje; esta tela mostra a janela inteira, sem
+// simulação.
 export async function getTimeline(db, today) {
   const { rows } = await db.query(
     `select day, balance_cents, is_projection
      from timeline($1::date, ($1::date + interval '12 months')::date, $1::date)`,
+    [today],
+  );
+  return rows;
+}
+
+// Causas nomeadas do movimento na mesma janela de getTimeline. Não calcula
+// saldo — timeline_movements() só lista o que timeline() já soma.
+export async function getTimelineMovements(db, today) {
+  const { rows } = await db.query(
+    `select day, source, kind, label, signed_cents
+     from timeline_movements($1::date, ($1::date + interval '12 months')::date, $1::date)`,
     [today],
   );
   return rows;

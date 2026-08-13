@@ -25,7 +25,7 @@ import {
   formatMonthName,
 } from './format';
 import { renderLancar } from './lancar';
-import { renderLinhaDoTempo } from './linha-do-tempo';
+import { renderPrevisao } from './previsao';
 import { push, replace } from './nav';
 import { renderUndoToast, type UndoState } from './undo';
 
@@ -109,15 +109,15 @@ export function renderHoje(app: HTMLDivElement, undo?: UndoState): void {
   const pendentesEl = document.createElement('div');
   pendentesEl.className = 'pendentes';
 
-  // "Acesso secundário" (SPEC.md §6): a linha do tempo completa, fora da
+  // "Acesso secundário" (SPEC.md §6): a Previsão dos 12 meses, fora da
   // tela principal — mesmo tratamento discreto do botão de Configurações,
   // para não competir com saldo/marcos/simulação. Sem sublinhado de link:
   // a área de toque é que marca o controle, não a decoração do texto.
-  const linhaTempoBtn = document.createElement('button');
-  linhaTempoBtn.type = 'button';
-  linhaTempoBtn.className = 'btn-config';
-  linhaTempoBtn.textContent = 'Ver linha do tempo completa';
-  linhaTempoBtn.addEventListener('click', () => push(renderLinhaDoTempo));
+  const previsaoBtn = document.createElement('button');
+  previsaoBtn.type = 'button';
+  previsaoBtn.className = 'btn-config';
+  previsaoBtn.textContent = 'Previsão';
+  previsaoBtn.addEventListener('click', () => push(renderPrevisao));
 
   // Discreet on purpose: the tela is built around the number at the top, and
   // backup is something the user does occasionally, not daily. Fica depois
@@ -130,7 +130,7 @@ export function renderHoje(app: HTMLDivElement, undo?: UndoState): void {
 
   const secundario = document.createElement('div');
   secundario.className = 'hoje-secundario';
-  secundario.append(linhaTempoBtn, configBtn);
+  secundario.append(previsaoBtn, configBtn);
 
   app.append(
     topo,

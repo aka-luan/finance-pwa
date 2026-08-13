@@ -110,8 +110,7 @@ function dateParts(
 
 // "julho" — nome do mês por extenso, para o card de desvio da estimativa
 // (SPEC.md §9), que se refere ao mês inteiro, não a um dia específico. Pass
-// withYear for the linha do tempo completa (issue #9), cuja janela de 12
-// meses rotineiramente cruza pra o ano seguinte — "julho de 2027".
+// withYear when the window can cross into the next year — "julho de 2027".
 export function formatMonthName(dateStr: string, options: { withYear?: boolean } = {}): string {
   const [year, month, day] = dateStr.split('-').map(Number);
   const date = new Date(Date.UTC(year as number, (month as number) - 1, day));
@@ -121,6 +120,13 @@ export function formatMonthName(dateStr: string, options: { withYear?: boolean }
     ...(options.withYear ? { year: 'numeric' as const } : {}),
     timeZone: 'UTC',
   }).format(date);
+}
+
+// "agosto 2026" — cabeçalho de mês da Previsão. Sem "de": o rótulo já é
+// uppercase via .secao-label, e "AGOSTO 2026" é o que cabe na coluna.
+export function formatMonthYear(dateStr: string): string {
+  const parts = dateParts(dateStr, { month: 'long', year: 'numeric' });
+  return `${parts.month} ${parts.year}`;
 }
 
 // For an ISO instant — a real point in time, unlike the schema's date columns,
