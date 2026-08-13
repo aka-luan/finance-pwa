@@ -1,6 +1,5 @@
 export const MONEY_MAX_DIGITS = 8;
 
-/** @param {bigint} cents */
 function displayAmount(cents) {
   const digits = (Number(cents < 0n ? -cents : cents) / 100).toLocaleString('pt-BR', {
     minimumFractionDigits: 2,
@@ -14,7 +13,7 @@ function displayAmount(cents) {
  * @param {{ allowNegative?: boolean }} [options]
  * @returns {{ cents: bigint, display: string }}
  */
-export function maskTypedMoney(raw, options = {}) {
+export function centsFirstMask(raw, options = {}) {
   const allowNegative = options.allowNegative === true;
   const negative = allowNegative && /[-−]/.test(raw);
   const digits = raw.replace(/\D/g, '').slice(0, MONEY_MAX_DIGITS);

@@ -4,7 +4,7 @@
  * lives behind •••.
  */
 
-import { maskTypedMoney } from './money-mask.mjs';
+import { centsFirstMask } from './money-mask.mjs';
 import { type FixedRow } from './wizard-planning-state';
 
 export type MoneySign = 'plus' | 'minus' | 'none';
@@ -46,11 +46,11 @@ export function moneyInput(
   input.setAttribute('aria-label', 'Valor');
   input.placeholder = '0,00';
   const show = (value: bigint): void => {
-    input.value = maskTypedMoney(value === 0n ? '' : value.toString(), { allowNegative }).display;
+    input.value = centsFirstMask(value === 0n ? '' : value.toString(), { allowNegative }).display;
   };
   show(cents);
   const read = (): bigint => {
-    const masked = maskTypedMoney(input.value, { allowNegative });
+    const masked = centsFirstMask(input.value, { allowNegative });
     input.value = masked.display;
     if (sign === 'none') return masked.cents;
     return masked.cents < 0n ? -masked.cents : masked.cents;
