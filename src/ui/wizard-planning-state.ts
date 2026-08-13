@@ -119,25 +119,3 @@ export function canConfirm(state: WizardState): boolean {
   }
   return true;
 }
-
-/** Parse "1.234,56" / "1234,56" / "1234" style pt-BR money into cents. */
-export function parseMoneyInput(raw: string): bigint | null {
-  const trimmed = raw.trim().replace(/\s/g, '');
-  if (!trimmed) return 0n;
-  const neg = trimmed.startsWith('-') || trimmed.startsWith('−');
-  const body = trimmed.replace(/^[-−]/, '').replace(/\./g, '').replace(',', '.');
-  if (!/^\d+(\.\d{1,2})?$/.test(body)) return null;
-  const [reais, frac = ''] = body.split('.');
-  const cents = BigInt(reais!) * 100n + BigInt((frac + '00').slice(0, 2));
-  return neg ? -cents : cents;
-}
-
-export function moneyFieldValue(cents: bigint): string {
-  if (cents === 0n) return '';
-  const neg = cents < 0n;
-  const abs = neg ? -cents : cents;
-  const whole = abs / 100n;
-  const frac = (abs % 100n).toString().padStart(2, '0');
-  const withDots = whole.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-  return `${neg ? '-' : ''}${withDots},${frac}`;
-}

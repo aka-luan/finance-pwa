@@ -4,11 +4,8 @@
  * lives behind •••.
  */
 
-import {
-  type FixedRow,
-  moneyFieldValue,
-  parseMoneyInput,
-} from './wizard-planning-state';
+import { maskTypedMoney } from './money-mask.mjs';
+import { type FixedRow } from './wizard-planning-state';
 
 export type MoneySign = 'plus' | 'minus' | 'none';
 
@@ -39,25 +36,45 @@ export function moneyInput(
   onCommit: (c: bigint) => void,
   sign: MoneySign = 'none',
 ): HTMLElement {
+  const allowNegative = sign === 'none';
   const wrap = document.createElement('label');
   wrap.className = 'wizard-money';
   const prefix = document.createElement('span');
   prefix.textContent = sign === 'plus' ? '+R$' : sign === 'minus' ? '−R$' : 'R$';
   const input = document.createElement('input');
-  input.inputMode = 'decimal';
+  input.inputMode = 'numeric';
   input.setAttribute('aria-label', 'Valor');
-  input.value = moneyFieldValue(cents);
   input.placeholder = '0,00';
+  const show = (value: bigint): void => {
+    input.value = maskTypedMoney(value === 0n ? '' : value.toString(), { allowNegative }).display;
+  };
+  show(cents);
+  const read = (): bigint => {
+    const masked = maskTypedMoney(input.value, { allowNegative });
+    input.value = masked.display;
+    if (sign === 'none') return masked.cents;
+    return masked.cents < 0n ? -masked.cents : masked.cents;
+  };
+  input.addEventListener('input', () => {
+    read();
+  });
   input.addEventListener('change', () => {
-    const parsed = parseMoneyInput(input.value);
-    if (parsed === null) {
-      input.value = moneyFieldValue(cents);
-      return;
-    }
-    onCommit(parsed < 0n ? -parsed : parsed);
+    onCommit(read());
   });
   wrap.append(prefix, input);
   return wrap;
+}
+
+export function withPreservedScroll(
+  app: HTMLElement,
+  selector: string,
+  rebuild: () => void,
+): void {
+  const previous = app.querySelector(selector);
+  const top = previous instanceof HTMLElement ? previous.scrollTop : 0;
+  rebuild();
+  const next = app.querySelector(selector);
+  if (next instanceof HTMLElement) next.scrollTop = top;
 }
 
 export function closeFixedMenus(): void {

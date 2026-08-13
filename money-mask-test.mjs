@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { maskTypedMoney } from './src/ui/money-mask.ts';
+import { maskTypedMoney } from './src/ui/money-mask.mjs';
 
 // Cents-first, like Hoje "e se eu gastar" and Lançar: each typed digit is a
 // cent, and the comma appears while typing. "1500" is R$ 15,00, not R$ 1.500,00.
@@ -34,7 +34,7 @@ import { maskTypedMoney } from './src/ui/money-mask.ts';
 {
   const got = maskTypedMoney('-1500', { allowNegative: true });
   assert.equal(got.cents, -1500n);
-  assert.equal(got.display, '-15,00');
+  assert.equal(got.display, '\u221215,00');
 }
 
 {
