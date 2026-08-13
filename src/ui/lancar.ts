@@ -11,6 +11,7 @@ import {
 import { debounce } from './debounce';
 import { formatAmount, formatDateHeader, formatDateSlash } from './format';
 import { renderHoje } from './hoje';
+import { replace, reset } from './nav';
 import { createAmountField, createNumpad } from './numpad';
 import { renderUndoToast, type UndoState } from './undo';
 
@@ -50,7 +51,7 @@ export function renderLancar(app: HTMLDivElement, options: LancarOptions = {}): 
   // em vez de mostrar "1 de 0".
   const date = recovery ? recovery.days[recovery.index] : todayBelem();
   if (date === undefined) {
-    renderHoje(app, undo);
+    reset((el) => renderHoje(el, undo));
     return;
   }
 
@@ -433,12 +434,14 @@ export function renderLancar(app: HTMLDivElement, options: LancarOptions = {}): 
   // inicial; quando acabam, retorna a Hoje com o saldo atualizado" (§7).
   const avancar = (saved?: UndoState): void => {
     if (recovery) {
-      renderLancar(app, {
-        recovery: { days: recovery.days, index: recovery.index + 1 },
-        undo: saved,
-      });
+      replace((el) =>
+        renderLancar(el, {
+          recovery: { days: recovery.days, index: recovery.index + 1 },
+          undo: saved,
+        }),
+      );
     } else {
-      renderHoje(app, saved);
+      reset((el) => renderHoje(el, saved));
     }
   };
 
@@ -542,7 +545,9 @@ export function renderLancar(app: HTMLDivElement, options: LancarOptions = {}): 
   // dia pendente de novo, então a tela volta para ele.
   if (undo) {
     renderUndoToast(app, undo, () =>
-      renderLancar(app, recovery ? { recovery: { days: recovery.days, index: recovery.index - 1 } } : {}),
+      replace((el) =>
+        renderLancar(el, recovery ? { recovery: { days: recovery.days, index: recovery.index - 1 } } : {}),
+      ),
     );
   }
 }

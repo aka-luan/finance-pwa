@@ -1,6 +1,6 @@
 import { getDb } from '../db';
 import { archiveCard, createCard, listCards, todayBelem, updateCard, type Card } from '../db/queries.mjs';
-import { renderConfiguracoes } from './configuracoes';
+import { back, push, replace } from './nav';
 
 // Tela Cartões (issue #7): CRUD de closing_day/due_day, alcançável a
 // partir de Configurações. installment/card_bill (schema.sql) já sabem
@@ -18,7 +18,7 @@ export function renderCartoes(app: HTMLDivElement): void {
   novoBtn.type = 'button';
   novoBtn.className = 'btn-bloco';
   novoBtn.textContent = 'Novo cartão';
-  novoBtn.addEventListener('click', () => renderCartaoForm(app));
+  novoBtn.addEventListener('click', () => push((el) => renderCartaoForm(el)));
 
   const status = document.createElement('p');
   status.className = 'config-status';
@@ -31,7 +31,7 @@ export function renderCartoes(app: HTMLDivElement): void {
   voltarBtn.type = 'button';
   voltarBtn.className = 'btn-voltar';
   voltarBtn.textContent = 'Voltar';
-  voltarBtn.addEventListener('click', () => renderConfiguracoes(app));
+  voltarBtn.addEventListener('click', () => back());
 
   app.append(title, novoBtn, status, list, voltarBtn);
 
@@ -68,7 +68,7 @@ function renderItem(app: HTMLDivElement, cartao: Card, status: HTMLElement): HTM
   info.type = 'button';
   info.className = 'recorrencia-info';
   if (!archived) {
-    info.addEventListener('click', () => renderCartaoForm(app, cartao));
+    info.addEventListener('click', () => push((el) => renderCartaoForm(el, cartao)));
   } else {
     info.disabled = true;
   }
@@ -96,7 +96,7 @@ function renderItem(app: HTMLDivElement, cartao: Card, status: HTMLElement): HTM
         try {
           const db = await getDb();
           await archiveCard(db, cartao.id, todayBelem());
-          renderCartoes(app);
+          replace(renderCartoes);
         } catch (err) {
           arquivarBtn.disabled = false;
           status.textContent = `Falha ao arquivar: ${(err as Error).message}`;
@@ -158,7 +158,7 @@ function renderCartaoForm(app: HTMLDivElement, existing?: Card): void {
   cancelarBtn.type = 'button';
   cancelarBtn.className = 'btn-secundario';
   cancelarBtn.textContent = 'Cancelar';
-  cancelarBtn.addEventListener('click', () => renderCartoes(app));
+  cancelarBtn.addEventListener('click', () => back());
 
   const salvarBtn = document.createElement('button');
   salvarBtn.type = 'button';
@@ -193,7 +193,7 @@ function renderCartaoForm(app: HTMLDivElement, existing?: Card): void {
       } else {
         await createCard(db, { name, closingDay, dueDay });
       }
-      renderCartoes(app);
+      back();
     } catch (err) {
       salvarBtn.disabled = false;
       cancelarBtn.disabled = false;

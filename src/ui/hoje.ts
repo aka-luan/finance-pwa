@@ -26,6 +26,7 @@ import {
 } from './format';
 import { renderLancar } from './lancar';
 import { renderLinhaDoTempo } from './linha-do-tempo';
+import { push, replace } from './nav';
 import { renderUndoToast, type UndoState } from './undo';
 
 // Tela Hoje (SPEC.md §6): saldo em conta, quanto posso gastar hoje, o
@@ -95,7 +96,7 @@ export function renderHoje(app: HTMLDivElement, undo?: UndoState): void {
   lancarBtn.type = 'button';
   lancarBtn.className = 'btn-lancar';
   lancarBtn.textContent = 'Lançar';
-  lancarBtn.addEventListener('click', () => renderLancar(app));
+  lancarBtn.addEventListener('click', () => push(renderLancar));
 
   const marcosEl = document.createElement('section');
   marcosEl.className = 'marcos';
@@ -116,7 +117,7 @@ export function renderHoje(app: HTMLDivElement, undo?: UndoState): void {
   linhaTempoBtn.type = 'button';
   linhaTempoBtn.className = 'btn-config';
   linhaTempoBtn.textContent = 'Ver linha do tempo completa';
-  linhaTempoBtn.addEventListener('click', () => renderLinhaDoTempo(app));
+  linhaTempoBtn.addEventListener('click', () => push(renderLinhaDoTempo));
 
   // Discreet on purpose: the tela is built around the number at the top, and
   // backup is something the user does occasionally, not daily. Fica depois
@@ -125,7 +126,7 @@ export function renderHoje(app: HTMLDivElement, undo?: UndoState): void {
   configBtn.type = 'button';
   configBtn.className = 'btn-config';
   configBtn.textContent = 'Configurações';
-  configBtn.addEventListener('click', () => renderConfiguracoes(app));
+  configBtn.addEventListener('click', () => push(renderConfiguracoes));
 
   const secundario = document.createElement('div');
   secundario.className = 'hoje-secundario';
@@ -145,10 +146,10 @@ export function renderHoje(app: HTMLDivElement, undo?: UndoState): void {
   );
 
   if (undo) {
-    renderUndoToast(app, undo, () => renderHoje(app));
+    renderUndoToast(app, undo, () => replace(renderHoje));
   }
 
-  void loadHoje(app, hoje, {
+  void loadHoje(hoje, {
     heroValor,
     heroNumero,
     saldoValor,
@@ -291,7 +292,7 @@ interface HojeElements {
   simularEl: SimularField;
 }
 
-async function loadHoje(app: HTMLDivElement, today: string, els: HojeElements): Promise<void> {
+async function loadHoje(today: string, els: HojeElements): Promise<void> {
   try {
     const db = await getDb();
     const { saldoCents, podeGastarCents } = await getHoje(db, today);
@@ -312,10 +313,10 @@ async function loadHoje(app: HTMLDivElement, today: string, els: HojeElements): 
     els.saldoValor.classList.toggle('valor-negativo', saldoCents < 0n);
 
     if (pendentes.length > 0) {
-      renderPendentes(app, els.pendentesEl, pendentes);
+      renderPendentes(els.pendentesEl, pendentes);
     }
 
-    await loadEstimateDeviation(app, db, today, els.estimativaEl);
+    await loadEstimateDeviation(db, today, els.estimativaEl);
     await loadMarcos(db, today, els.marcosEl, els.piorEl, els.simularEl);
   } catch (err) {
     els.heroValor.classList.add('hoje-hero-sem-valor');
@@ -329,7 +330,6 @@ async function loadHoje(app: HTMLDivElement, today: string, els: HojeElements): 
 // here must not overwrite an already-successful saldo with a misleading
 // "falha ao carregar o saldo" (same reasoning as loadMarcos below).
 async function loadEstimateDeviation(
-  app: HTMLDivElement,
   db: PGlite,
   today: string,
   estimativaEl: HTMLElement,
@@ -337,7 +337,7 @@ async function loadEstimateDeviation(
   try {
     const desvio = await getEstimateDeviation(db, today);
     if (desvio) {
-      renderEstimativaAviso(app, estimativaEl, desvio, today);
+      renderEstimativaAviso(estimativaEl, desvio, today);
     }
   } catch (err) {
     estimativaEl.textContent = `Falha ao carregar o aviso de estimativa: ${(err as Error).message}`;
@@ -349,7 +349,6 @@ async function loadEstimateDeviation(
 // retroagir; "Manter" só dispensa o mês. Os dois recarregam a tela — o
 // card não deve reaparecer depois de qualquer uma das duas escolhas.
 function renderEstimativaAviso(
-  app: HTMLDivElement,
   container: HTMLElement,
   desvio: EstimateDeviation,
   today: string,
@@ -375,7 +374,7 @@ function renderEstimativaAviso(
       // dispensar aqui, o card reapareceria idêntico na próxima abertura.
       await updateEstimate(db, desvio.actual_cents, today);
       await dismissEstimateDeviation(db, desvio.month);
-      renderHoje(app);
+      replace(renderHoje);
     })();
   });
 
@@ -389,7 +388,7 @@ function renderEstimativaAviso(
       manterBtn.disabled = true;
       const db = await getDb();
       await dismissEstimateDeviation(db, desvio.month);
-      renderHoje(app);
+      replace(renderHoje);
     })();
   });
 
@@ -546,11 +545,11 @@ function renderPiorMomento(
 // app fizer o usuário se sentir devedor, ele para de abrir" (SPEC.md §6).
 // Os dois caminhos de §8 ficam lado a lado: preencher em sequência é o
 // aviso; acertar saldo é o outro, aqui e não escondido em configurações.
-function renderPendentes(app: HTMLDivElement, container: HTMLElement, days: string[]): void {
+function renderPendentes(container: HTMLElement, days: string[]): void {
   const aviso = document.createElement('button');
   aviso.type = 'button';
   aviso.className = 'pendentes-aviso';
-  aviso.addEventListener('click', () => renderLancar(app, { recovery: { days, index: 0 } }));
+  aviso.addEventListener('click', () => push((el) => renderLancar(el, { recovery: { days, index: 0 } })));
 
   const texto = document.createElement('span');
   texto.className = 'pendentes-texto';
@@ -569,7 +568,7 @@ function renderPendentes(app: HTMLDivElement, container: HTMLElement, days: stri
   acertar.type = 'button';
   acertar.className = 'pendentes-acertar';
   acertar.textContent = 'Acertar saldo';
-  acertar.addEventListener('click', () => renderAcertarSaldo(app));
+  acertar.addEventListener('click', () => push(renderAcertarSaldo));
 
   container.append(aviso, acertar);
 }

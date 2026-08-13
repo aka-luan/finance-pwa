@@ -32,8 +32,12 @@ export default defineConfig({
         name: 'Termômetro',
         short_name: 'Termômetro',
         description: 'Controle financeiro pessoal',
+        lang: 'pt-BR',
         start_url: '/',
+        id: '/',
         display: 'standalone',
+        display_override: ['standalone'],
+        orientation: 'portrait',
         background_color: '#0d0f10',
         theme_color: '#0d0f10',
         icons: [

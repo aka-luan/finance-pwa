@@ -1,7 +1,7 @@
 import { getDb } from '../db';
 import { getTimeline, todayBelem, type TimelineDay } from '../db/queries.mjs';
 import { formatCents, formatMonthName } from './format';
-import { renderHoje } from './hoje';
+import { back } from './nav';
 
 // Linha do tempo completa (issue #9, SPEC.md §6): "acesso secundário" fora
 // da tela principal — os 12 meses dia a dia, o condensado que substitui
@@ -27,7 +27,7 @@ export function renderLinhaDoTempo(app: HTMLDivElement): void {
   voltarBtn.type = 'button';
   voltarBtn.className = 'btn-voltar';
   voltarBtn.textContent = 'Voltar';
-  voltarBtn.addEventListener('click', () => renderHoje(app));
+  voltarBtn.addEventListener('click', () => back());
 
   app.append(title, status, list, voltarBtn);
 

@@ -11,6 +11,7 @@ import { clearEstimateDismissals, needsFirstRun, todayBelem } from '../db/querie
 import { renderCartoes } from './cartoes';
 import { formatTimestamp } from './format';
 import { renderHoje } from './hoje';
+import { back, push, reset } from './nav';
 import { renderRecorrencias } from './recorrencias';
 import { renderWizardPlanning } from './wizard-planning';
 
@@ -33,7 +34,7 @@ export function renderConfiguracoes(app: HTMLDivElement): void {
   recorrenciasBtn.type = 'button';
   recorrenciasBtn.className = 'btn-bloco';
   recorrenciasBtn.textContent = 'Gerenciar recorrências';
-  recorrenciasBtn.addEventListener('click', () => renderRecorrencias(app));
+  recorrenciasBtn.addEventListener('click', () => push(renderRecorrencias));
 
   const cartoesTitle = document.createElement('h2');
   cartoesTitle.className = 'config-secao';
@@ -43,7 +44,7 @@ export function renderConfiguracoes(app: HTMLDivElement): void {
   cartoesBtn.type = 'button';
   cartoesBtn.className = 'btn-bloco';
   cartoesBtn.textContent = 'Gerenciar cartões';
-  cartoesBtn.addEventListener('click', () => renderCartoes(app));
+  cartoesBtn.addEventListener('click', () => push(renderCartoes));
 
   const planejamentoTitle = document.createElement('h2');
   planejamentoTitle.className = 'config-secao';
@@ -53,7 +54,7 @@ export function renderConfiguracoes(app: HTMLDivElement): void {
   recalibrarBtn.type = 'button';
   recalibrarBtn.className = 'btn-bloco';
   recalibrarBtn.textContent = 'Recalibrar planejamento';
-  recalibrarBtn.addEventListener('click', () => renderWizardPlanning(app, 'recalibrar'));
+  recalibrarBtn.addEventListener('click', () => push((el) => renderWizardPlanning(el, 'recalibrar')));
 
   const estimativaTitle = document.createElement('h2');
   estimativaTitle.className = 'config-secao';
@@ -115,7 +116,7 @@ export function renderConfiguracoes(app: HTMLDivElement): void {
         try {
           const db = await getDb();
           await clearEstimateDismissals(db);
-          renderHoje(app);
+          reset(renderHoje);
         } catch (err) {
           confirmarBtn.disabled = false;
           cancelarBtn.disabled = false;
@@ -154,7 +155,7 @@ export function renderConfiguracoes(app: HTMLDivElement): void {
   voltarBtn.type = 'button';
   voltarBtn.className = 'btn-voltar';
   voltarBtn.textContent = 'Voltar';
-  voltarBtn.addEventListener('click', () => renderHoje(app));
+  voltarBtn.addEventListener('click', () => back());
 
   const exportar = async (): Promise<void> => {
     exportarBtn.disabled = true;
@@ -237,9 +238,9 @@ export function renderConfiguracoes(app: HTMLDivElement): void {
           await importBackup(db, backup);
           // Reaplica o gate (#18): backup pronto → Hoje; senão wizard.
           if (await needsFirstRun(db)) {
-            renderWizardPlanning(app, 'primeiro-uso');
+            reset((el) => renderWizardPlanning(el, 'primeiro-uso'));
           } else {
-            renderHoje(app);
+            reset(renderHoje);
           }
         } catch (err) {
           confirmarBtn.disabled = false;

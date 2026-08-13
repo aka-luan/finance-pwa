@@ -13,12 +13,14 @@ import './style.css';
 import { getDb } from './db';
 import { needsFirstRun } from './db/queries.mjs';
 import { renderHoje } from './ui/hoje';
+import { mountNav, reset } from './ui/nav';
 import { renderWizardPlanning } from './ui/wizard-planning';
 
 registerSW({ immediate: true });
 
 const app = document.querySelector<HTMLDivElement>('#app');
 if (app) {
+  mountNav(app);
   // Shell paints immediately; gate resolves after PGlite boot (ADR 0003).
   // Never show a fake R$ 0,00 Hoje while waiting.
   app.className = 'screen screen-boot';
@@ -28,9 +30,9 @@ if (app) {
     try {
       const db = await getDb();
       if (await needsFirstRun(db)) {
-        renderWizardPlanning(app, 'primeiro-uso');
+        reset((el) => renderWizardPlanning(el, 'primeiro-uso'));
       } else {
-        renderHoje(app);
+        reset(renderHoje);
       }
     } catch (err) {
       app.className = 'screen screen-boot';

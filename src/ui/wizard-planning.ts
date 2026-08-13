@@ -19,8 +19,8 @@ import {
   todayBelem,
 } from '../db/queries.mjs';
 import { formatAmount } from './format';
-import { renderConfiguracoes } from './configuracoes';
 import { renderHoje } from './hoje';
+import { back, reset } from './nav';
 import {
   type FixedRow,
   type WizardMode,
@@ -180,8 +180,13 @@ function paint(app: HTMLDivElement, state: WizardState): void {
     }));
     if (state.mode === 'primeiro-uso') {
       body.append(restoreControl(app, state, setState));
+      footer.append(primaryBtn('Continuar', () => setState({ ...state, step: step + 1, error: '' })));
+    } else {
+      footer.append(
+        secondaryBtn('Voltar', () => back()),
+        primaryBtn('Continuar', () => setState({ ...state, step: step + 1, error: '' })),
+      );
     }
-    footer.append(primaryBtn('Continuar', () => setState({ ...state, step: step + 1, error: '' })));
   } else if (STEPS[step] === 'Fixos') {
     title.textContent = 'O que entra e sai todo mês?';
     const hint = document.createElement('p');
@@ -219,7 +224,7 @@ function paint(app: HTMLDivElement, state: WizardState): void {
       secondaryBtn('Voltar', () => setState({ ...state, step: step - 1, error: '' }), state.saving),
       primaryBtn(
         state.saving ? 'Salvando…' : 'Salvar planejamento',
-        () => void save(app, state, setState),
+        () => void save(state, setState),
         !canConfirm(state) || state.saving,
       ),
     );
@@ -229,7 +234,6 @@ function paint(app: HTMLDivElement, state: WizardState): void {
 }
 
 async function save(
-  app: HTMLDivElement,
   state: WizardState,
   setState: (s: WizardState) => void,
 ): Promise<void> {
@@ -264,9 +268,9 @@ async function save(
       fixos,
     });
     if (state.mode === 'primeiro-uso') {
-      renderHoje(app);
+      reset(renderHoje);
     } else {
-      renderConfiguracoes(app);
+      back();
     }
   } catch (err) {
     setState({ ...state, saving: false, error: (err as Error).message });
@@ -307,7 +311,7 @@ function restoreControl(
             error: 'Backup restaurado, mas ainda falta saldo ou estimativa. Continue o planejamento.',
           });
         } else {
-          renderHoje(app);
+          reset(renderHoje);
         }
       } catch (err) {
         setState({ ...state, error: `Arquivo recusado: ${(err as Error).message}` });

@@ -1,6 +1,7 @@
 import { getDb } from '../db';
 import { setAnchor, todayBelem } from '../db/queries.mjs';
 import { renderHoje } from './hoje';
+import { back, reset } from './nav';
 import { createAmountField, createNumpad } from './numpad';
 
 // "Acertar saldo" (SPEC.md §8): o outro caminho legítimo para zerar dias
@@ -35,7 +36,7 @@ export function renderAcertarSaldo(app: HTMLDivElement): void {
   voltarBtn.type = 'button';
   voltarBtn.className = 'btn-secundario';
   voltarBtn.textContent = 'Voltar';
-  voltarBtn.addEventListener('click', () => renderHoje(app));
+  voltarBtn.addEventListener('click', () => back());
 
   const salvarBtn = document.createElement('button');
   salvarBtn.type = 'button';
@@ -62,7 +63,7 @@ export function renderAcertarSaldo(app: HTMLDivElement): void {
     try {
       const db = await getDb();
       await setAnchor(db, todayBelem(), amount.cents());
-      renderHoje(app);
+      reset(renderHoje);
     } catch (err) {
       salvarBtn.disabled = false;
       voltarBtn.disabled = false;
