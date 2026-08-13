@@ -24,6 +24,13 @@ export function formatAmount(cents: bigint): string {
   return cents < 0n ? `−${digits}` : digits;
 }
 
+// Sinal explícito nos dois lados — o horizonte da Previsão precisa que
+// "+830,00" e "−525,00" se distingam no mesmo relance, não só o negativo.
+export function formatSignedAmount(cents: bigint): string {
+  if (cents > 0n) return `+${formatAmount(cents)}`;
+  return formatAmount(cents);
+}
+
 // "quarta, 5 de agosto" — explicit, not "Hoje" (SPEC.md §7). Builds the
 // Date from the 'YYYY-MM-DD' string's parts via Date.UTC and formats with
 // timeZone: 'UTC' so the day never shifts, matching the parser contract in
@@ -127,6 +134,12 @@ export function formatMonthName(dateStr: string, options: { withYear?: boolean }
 export function formatMonthYear(dateStr: string): string {
   const parts = dateParts(dateStr, { month: 'long', year: 'numeric' });
   return `${parts.month} ${parts.year}`;
+}
+
+// "ago" — coluna do horizonte, onde o nome por extenso não cabe. O CSS
+// do rótulo põe em uppercase; o ponto do pt-BR ("ago.") já sai em dateParts.
+export function formatMonthAbbrev(dateStr: string): string {
+  return dateParts(dateStr, { month: 'short' }).month ?? '';
 }
 
 // For an ISO instant — a real point in time, unlike the schema's date columns,
