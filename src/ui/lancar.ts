@@ -40,6 +40,13 @@ export interface LancarOptions {
 // lançar — os valores altos são os que se usa na prática (24x, 36x, 48x).
 const PARCELAS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 18, 24, 36, 48];
 
+const KIND_HINT: Record<'diario' | 'saida' | 'entrada' | 'cartao', string> = {
+  diario: 'gasto cotidiano (Pix, débito)',
+  saida: 'despesa estrutural',
+  entrada: 'dinheiro na conta',
+  cartao: 'compra no crédito',
+};
+
 // Tela Lançar (SPEC.md §7): quatro modos — Diário, Saída, Entrada (lista de
 // valores, issue #12) e Cartão (compra parcelada, issue #7). Diário/Saída/
 // Entrada compartilham a mesma seção de lista-de-valores; só o `kind`
@@ -154,10 +161,10 @@ export function renderLancar(app: HTMLDivElement, options: LancarOptions = {}): 
 
   // --- Campo de valor (sem UI própria) -----------------------------------
 
-  // O AmountField fica fora do DOM de propósito: no design o valor sendo
-  // digitado aparece dentro da tecla "adicionar" (lista) ou na linha do
-  // Total (cartão), não num campo separado. Um campo só — trocar o tipo não
-  // pode apagar o que já está no teclado.
+  // O AmountField fica fora do DOM de propósito: no modo lista o valor
+  // sendo digitado aparece no botão "Adicionar"; em Cartão, na linha do
+  // Total. Um campo só — trocar o tipo não pode apagar o que já está no
+  // teclado.
   const amount = createAmountField('Valor');
 
   const renderTotal = (): void => {
@@ -200,6 +207,7 @@ export function renderLancar(app: HTMLDivElement, options: LancarOptions = {}): 
 
     vazioEl.hidden = items.length > 0;
     renderTotal();
+    updateActions();
   };
 
   const commitItem = (): void => {
@@ -207,35 +215,77 @@ export function renderLancar(app: HTMLDivElement, options: LancarOptions = {}): 
     if (amountCents <= 0n) return;
     items.push({ key: crypto.randomUUID(), amountCents });
     amount.clear();
-    numpad.setBuffer(formatAmount(0n));
     renderList();
+  };
+
+  // --- Ações: Adicionar / Salvar / Não gastei nada ----------------------
+
+  // Uma ação óbvia por estágio: o valor digitado só vive no Adicionar;
+  // Total é a soma já na lista. Salvar auto-grava o buffer (caminho rápido
+  // de um valor só). Não gastei nada só aparece com a lista e o buffer
+  // vazios — senão seria uma saída que descarta o que já se digitou.
+  const adicionarBtn = document.createElement('button');
+  adicionarBtn.type = 'button';
+  adicionarBtn.className = 'lancar-adicionar';
+  adicionarBtn.addEventListener('click', commitItem);
+
+  const salvarBtn = document.createElement('button');
+  salvarBtn.type = 'button';
+  salvarBtn.className = 'btn-salvar';
+  salvarBtn.textContent = 'Salvar';
+
+  const naoGasteiBtn = document.createElement('button');
+  naoGasteiBtn.type = 'button';
+  naoGasteiBtn.className = 'btn-nao-gastei';
+  naoGasteiBtn.textContent = 'Não gastei nada';
+
+  const errorEl = document.createElement('p');
+  errorEl.className = 'lancar-erro';
+
+  const updateActions = (): void => {
+    const lista = isLista(tipo);
+    const buffer = amount.cents();
+    const temBuffer = buffer > 0n;
+    const temItens = items.length > 0;
+
+    adicionarBtn.hidden = !lista;
+    adicionarBtn.disabled = !temBuffer;
+    adicionarBtn.textContent = `+ Adicionar R$ ${formatAmount(buffer)}`;
+    adicionarBtn.setAttribute(
+      'aria-label',
+      `Adicionar R$ ${formatAmount(buffer)} à lista`,
+    );
+
+    salvarBtn.disabled = lista ? !temItens && !temBuffer : !temBuffer;
+    naoGasteiBtn.hidden = !lista || temItens || temBuffer;
+    naoGasteiBtn.disabled = false;
   };
 
   // --- Numpad ------------------------------------------------------------
 
-  // Um teclado só para os quatro tipos: em Cartão a coluna "adicionar" some
-  // (a compra é um valor, não uma lista) e o valor digitado aparece no
-  // Total. Dois teclados empilhados fariam a tela pular de altura na troca.
+  // Um teclado só para os quatro tipos: em Cartão o Adicionar some (a
+  // compra é um valor, não uma lista) e o valor digitado aparece no Total.
   const numpad = createNumpad({
     onDigit: (digit) => {
       amount.addDigit(digit);
       if (isLista(tipo)) {
-        numpad.setBuffer(formatAmount(amount.cents()));
+        updateActions();
       } else {
         renderTotal();
+        updateActions();
         void updatePreview();
       }
     },
     onBackspace: () => {
       amount.backspace();
       if (isLista(tipo)) {
-        numpad.setBuffer(formatAmount(amount.cents()));
+        updateActions();
       } else {
         renderTotal();
+        updateActions();
         void updatePreview();
       }
     },
-    onAdd: commitItem,
   });
 
   // --- Cartão: pickers e consequência ------------------------------------
@@ -354,6 +404,9 @@ export function renderLancar(app: HTMLDivElement, options: LancarOptions = {}): 
   const entradaBtn = criarPill('Entrada');
   const cartaoBtn = criarPill('Cartão');
 
+  const kindHint = document.createElement('p');
+  kindHint.className = 'lancar-kind-hint';
+
   const renderTipo = (): void => {
     const pills: [HTMLButtonElement, typeof tipo][] = [
       [diarioBtn, 'diario'],
@@ -370,12 +423,11 @@ export function renderLancar(app: HTMLDivElement, options: LancarOptions = {}): 
     dataBloco.hidden = !lista;
     cartaoPickers.hidden = lista;
     listaArea.hidden = !lista;
-    naoGasteiBtn.hidden = !lista;
-    numpad.element.classList.toggle('numpad-sem-adicionar', !lista);
+    kindHint.textContent = KIND_HINT[tipo];
     errorEl.textContent = '';
     if (lista) previewEl.textContent = '';
-    numpad.setBuffer(formatAmount(amount.cents()));
     renderTotal();
+    updateActions();
   };
 
   // O `kind` gravado é o da pill no Salvar, visível. Trocar de tipo no meio
@@ -403,19 +455,6 @@ export function renderLancar(app: HTMLDivElement, options: LancarOptions = {}): 
   const footer = document.createElement('div');
   footer.className = 'tela-footer';
 
-  const salvarBtn = document.createElement('button');
-  salvarBtn.type = 'button';
-  salvarBtn.className = 'btn-salvar';
-  salvarBtn.textContent = 'Salvar';
-
-  const naoGasteiBtn = document.createElement('button');
-  naoGasteiBtn.type = 'button';
-  naoGasteiBtn.className = 'btn-secundario';
-  naoGasteiBtn.textContent = 'Não gastei nada';
-
-  const errorEl = document.createElement('p');
-  errorEl.className = 'lancar-erro';
-
   // "Ambos avançam direto para o próximo dia pendente sem voltar à tela
   // inicial; quando acabam, retorna a Hoje com o saldo atualizado" (§7).
   const avancar = (saved?: UndoState): void => {
@@ -431,13 +470,18 @@ export function renderLancar(app: HTMLDivElement, options: LancarOptions = {}): 
     }
   };
 
+  const lockSave = (): void => {
+    salvarBtn.disabled = true;
+    naoGasteiBtn.disabled = true;
+    adicionarBtn.disabled = true;
+  };
+
   const salvarLista = async (kind: 'diario' | 'saida' | 'entrada'): Promise<void> => {
     // A value typed but not yet added with "+" is still meant to be saved.
     commitItem();
     if (items.length === 0) return;
 
-    salvarBtn.disabled = true;
-    naoGasteiBtn.disabled = true;
+    lockSave();
     errorEl.textContent = '';
     try {
       const db = await getDb();
@@ -449,8 +493,7 @@ export function renderLancar(app: HTMLDivElement, options: LancarOptions = {}): 
       );
       avancar({ ids, expiresAt: Date.now() + 5000 });
     } catch (err) {
-      salvarBtn.disabled = false;
-      naoGasteiBtn.disabled = false;
+      updateActions();
       errorEl.textContent = `Falha ao salvar: ${(err as Error).message}`;
     }
   };
@@ -473,14 +516,14 @@ export function renderLancar(app: HTMLDivElement, options: LancarOptions = {}): 
       return;
     }
 
-    salvarBtn.disabled = true;
+    lockSave();
     errorEl.textContent = '';
     try {
       const db = await getDb();
       const id = await insertPurchase(db, { cardId: card.id, date, amountCents, installments });
       avancar({ ids: [id], expiresAt: Date.now() + 5000, kind: 'purchase' });
     } catch (err) {
-      salvarBtn.disabled = false;
+      updateActions();
       errorEl.textContent = `Falha ao salvar: ${(err as Error).message}`;
     }
   };
@@ -490,16 +533,14 @@ export function renderLancar(app: HTMLDivElement, options: LancarOptions = {}): 
   };
 
   const naoGastei = async (): Promise<void> => {
-    salvarBtn.disabled = true;
-    naoGasteiBtn.disabled = true;
+    lockSave();
     errorEl.textContent = '';
     try {
       const db = await getDb();
       await settleDay(db, date);
       avancar();
     } catch (err) {
-      salvarBtn.disabled = false;
-      naoGasteiBtn.disabled = false;
+      updateActions();
       errorEl.textContent = `Falha ao salvar: ${(err as Error).message}`;
     }
   };
@@ -518,7 +559,9 @@ export function renderLancar(app: HTMLDivElement, options: LancarOptions = {}): 
     totalLinha,
     previewEl,
     tipoToggle,
+    kindHint,
     numpad.element,
+    adicionarBtn,
     errorEl,
     footer,
   );

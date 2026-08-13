@@ -192,21 +192,25 @@ lista visível, com total abaixo e um × por item. Conferindo contra a
 fatura, o usuário vê o que já lançou e corrige um item sem reescrever
 o resto.
 
-**Numpad próprio, em HTML.** `inputmode` nativo não entrega um `+`
-acessível: `decimal` não tem o operador e `tel` custa a vírgula. O
-numpad próprio dá controle de layout (tecla de adicionar grande, na
-zona do polegar), evita o teclado do sistema empurrando o layout no
-iOS e serve as duas telas. Input `readonly` para suprimir o teclado
-nativo.
+**Numpad próprio, em HTML.** Três colunas (`1–9`, `00`, `0`, apagar),
+entrada em centavos, sem vírgula. Abaixo dele, o botão de largura
+total *+ Adicionar R$ …* põe o valor digitado na lista — o total acima
+é só o que já entrou. *Salvar* ainda grava um valor digitado que não
+foi adicionado, para o caminho rápido de um lançamento só. O teclado
+próprio evita o do sistema empurrar o layout no iOS e serve as duas
+telas. Input `readonly` para suprimir o teclado nativo.
 
 **Tipo:** `Diário` pré-selecionado — é a maioria dos lançamentos.
-`Saída`, `Entrada`, `Cartão` a um toque.
+`Saída`, `Entrada`, `Cartão` a um toque. Uma linha sob as pills diz o
+que cada tipo é (gasto cotidiano, despesa estrutural, dinheiro na
+conta, compra no crédito).
 
 **Categoria:** opcional, por item, atrás de um link discreto.
 
-**Rodapé:** *Salvar* e *Não gastei nada*. Ambos avançam direto para o
-próximo dia pendente sem voltar à tela inicial; quando acabam, retorna
-a Hoje com o saldo atualizado.
+**Rodapé:** *Salvar* em largura total. *Não gastei nada* fica abaixo,
+terciário, e só aparece com a lista vazia — não compete com gravar.
+Ambos avançam direto para o próximo dia pendente sem voltar à tela
+inicial; quando acabam, retorna a Hoje com o saldo atualizado.
 
 **Modo cartão:** ao escolher `Cartão`, a data dá lugar a cartão +
 parcelas, e a tela informa o efeito — "3x de R$ 333,34 — primeira vence
@@ -277,8 +281,6 @@ hábito de uso estabelecido — vem depois do laço básico funcionar.
 
 ## 11. Em aberto
 
-- Layout exato do numpad: posição da tecla de adicionar, se há vírgula
-  e como se comporta.
 - Backup: formato do dump e gatilho (periódico, manual, ao fechar).
 - Se um cenário simulado pode ser salvo em vez de descartado.
 - Categorias: lista fixa ou livre, e se herdam do último uso.

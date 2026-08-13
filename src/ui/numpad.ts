@@ -13,8 +13,8 @@ export interface AmountField {
 }
 
 // Cents-first entry: every digit shifts into cents, so the value is always
-// an integer and never needs a decimal-point parse step (resolves §11's
-// open comma question). Shared by Lançar and Acertar saldo.
+// an integer and never needs a decimal-point parse step (SPEC.md §11).
+// Shared by Lançar, Acertar saldo and Recorrências.
 export function createAmountField(label: string): AmountField {
   let digits = '';
 
@@ -64,24 +64,18 @@ export function createAmountField(label: string): AmountField {
 export interface NumpadHandlers {
   onDigit(digit: string): void;
   onBackspace(): void;
-  // The big add key, in the thumb zone (SPEC.md §7). Screens that take a
-  // single value leave it out and get the plain 3-column keypad.
-  onAdd?: () => void;
 }
 
 export interface Numpad {
   element: HTMLDivElement;
-  // O valor sendo digitado mora dentro da tecla de adicionar, então quem
-  // controla o AmountField precisa empurrar cada mudança para cá. No teclado
-  // sem `onAdd` não há onde mostrar e a chamada não faz nada.
-  setBuffer(text: string): void;
 }
 
-// Numpad próprio em HTML: `inputmode` nativo não entrega um `+` acessível
-// e o teclado do sistema empurra o layout no iOS (SPEC.md §7).
+// Numpad próprio em HTML: o teclado do sistema empurra o layout no iOS
+// (SPEC.md §7). Sempre três colunas — o "adicionar" de Lançar é um botão
+// à parte, abaixo do teclado, não uma quarta coluna.
 export function createNumpad(handlers: NumpadHandlers): Numpad {
   const element = document.createElement('div');
-  element.className = handlers.onAdd ? 'numpad numpad-com-adicionar' : 'numpad';
+  element.className = 'numpad';
 
   const addKey = (label: string, ariaLabel: string, onPress: () => void): void => {
     const btn = document.createElement('button');
@@ -107,41 +101,5 @@ export function createNumpad(handlers: NumpadHandlers): Numpad {
   addKey('0', '0', () => handlers.onDigit('0'));
   addKey('⌫', 'Apagar', () => handlers.onBackspace());
 
-  if (!handlers.onAdd) {
-    return { element, setBuffer: () => {} };
-  }
-
-  const onAdd = handlers.onAdd;
-
-  // Uma célula só, ocupando as quatro linhas da quarta coluna: é a tecla de
-  // maior alvo do teclado e fica sob o polegar. Mostra o valor digitado
-  // porque, com a lista já ocupando o meio da tela, não há um campo de valor
-  // separado — o buffer aparece aqui, dentro do botão que o consome.
-  const adicionarBtn = document.createElement('button');
-  adicionarBtn.type = 'button';
-  adicionarBtn.className = 'numpad-adicionar';
-  adicionarBtn.setAttribute('aria-label', 'Adicionar à lista');
-  adicionarBtn.addEventListener('click', () => onAdd());
-
-  const glifo = document.createElement('span');
-  glifo.className = 'numpad-adicionar-glifo';
-  glifo.textContent = '+';
-  glifo.setAttribute('aria-hidden', 'true');
-
-  const bufferEl = document.createElement('span');
-  bufferEl.className = 'numpad-adicionar-buffer';
-
-  const legenda = document.createElement('span');
-  legenda.className = 'numpad-adicionar-legenda';
-  legenda.textContent = 'adicionar';
-
-  adicionarBtn.append(glifo, bufferEl, legenda);
-  element.append(adicionarBtn);
-
-  return {
-    element,
-    setBuffer(text) {
-      bufferEl.textContent = text;
-    },
-  };
+  return { element };
 }
