@@ -12,6 +12,7 @@ import { renderCartoes } from './cartoes';
 import { formatTimestamp } from './format';
 import { renderHoje } from './hoje';
 import { back, push, reset } from './nav';
+import { renderPlanejamento } from './planejamento';
 import { renderRecorrencias } from './recorrencias';
 import { renderWizardPlanning } from './wizard-planning';
 
@@ -54,7 +55,7 @@ export function renderConfiguracoes(app: HTMLDivElement): void {
   recalibrarBtn.type = 'button';
   recalibrarBtn.className = 'btn-bloco';
   recalibrarBtn.textContent = 'Recalibrar planejamento';
-  recalibrarBtn.addEventListener('click', () => push((el) => renderWizardPlanning(el, 'recalibrar')));
+  recalibrarBtn.addEventListener('click', () => push(renderPlanejamento));
 
   const estimativaTitle = document.createElement('h2');
   estimativaTitle.className = 'config-secao';

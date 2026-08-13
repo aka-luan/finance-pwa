@@ -3,6 +3,8 @@
  * Pure functions shared by the production wizard UI.
  */
 
+import { roundHalfUpDiv } from '../db/queries.mjs';
+
 export type WizardMode = 'primeiro-uso' | 'recalibrar';
 
 export type CategoryRow = {
@@ -93,7 +95,18 @@ export function leftoverAfterPlan(state: WizardState): bigint {
 }
 
 export function dailyEstimate(state: WizardState): bigint {
-  return roundHalfUpDiv(monthlyTotal(state), 30n);
+  return dailyEstimateFromTotal(monthlyTotal(state));
+}
+
+export function dailyEstimateFromTotal(total: bigint): bigint {
+  return roundHalfUpDiv(total, 30n);
+}
+
+/** Inclusive remaining calendar days in the civil month of `today` (YYYY-MM-DD). */
+export function remainingDaysInMonth(today: string): number {
+  const [year, month, day] = today.split('-').map(Number);
+  const last = new Date(Date.UTC(year as number, month as number, 0)).getUTCDate();
+  return last - (day as number) + 1;
 }
 
 export function previewToday(state: WizardState): bigint {
@@ -112,17 +125,6 @@ export function canConfirm(state: WizardState): boolean {
     if (!c.name.trim()) return false;
   }
   return true;
-}
-
-export function roundHalfUpDiv(n: bigint, d: bigint): bigint {
-  if (d === 0n) throw new Error('roundHalfUpDiv: divisor must be non-zero');
-  if (n === 0n) return 0n;
-  const sign = n < 0n ? -1n : 1n;
-  const absN = n < 0n ? -n : n;
-  const absD = d < 0n ? -d : d;
-  const absQ = absN / absD;
-  const absR = absN % absD;
-  return sign * (absR * 2n >= absD ? absQ + 1n : absQ);
 }
 
 /** Parse "1.234,56" / "1234,56" / "1234" style pt-BR money into cents. */

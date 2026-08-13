@@ -214,6 +214,7 @@ select {
 .wizard-running,
 .wizard-actual,
 .wizard-summary-row span:last-child,
+.planejamento-calc-row span:last-child,
 .wizard-day-btn,
 .wizard-day-sheet-grid button,
 .wizard-fixed-card .wizard-money input,
@@ -628,7 +629,7 @@ select {
   filter: brightness(1.08);
 }
 
-/* Acessos secundários (Previsão, configurações): empurrados para o
+/* Acessos secundários (Previsão, Planejamento, configurações): empurrados para o
    rodapé pelo espaçador flexível, com folga à direita para não ficarem sob
    o FAB, que é fixo. */
 .hoje-secundario {
@@ -1149,6 +1150,7 @@ select {
 .screen-cartao-form,
 .screen-previsao,
 .screen-wizard,
+.screen-planejamento,
 .screen-boot {
   display: flex;
   flex-direction: column;
@@ -1353,6 +1355,16 @@ select {
   white-space: nowrap;
 }
 
+.wizard-fixed-card-noday {
+  grid-template-areas:
+    'name more'
+    'money money';
+}
+
+.wizard-fixed-card-noday .wizard-money {
+  padding-right: 8px;
+}
+
 .wizard-day-btn:active {
   background: var(--surface-pressed);
 }
@@ -1516,6 +1528,67 @@ select {
   color: var(--fg-muted);
   font-family: var(--sans);
   font-variant-numeric: normal;
+}
+
+.screen-planejamento {
+  gap: 10px;
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+}
+
+.screen-planejamento .config-title,
+.screen-planejamento .wizard-hint,
+.screen-planejamento .lancar-erro,
+.screen-planejamento .btn-voltar {
+  flex-shrink: 0;
+}
+
+.planejamento-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.screen-planejamento .btn-voltar {
+  margin-top: 0;
+  padding-top: 8px;
+}
+
+.planejamento-calc {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: var(--space-2);
+}
+
+.planejamento-calc-row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.planejamento-calc-row span:first-child {
+  color: var(--fg-muted);
+  font-family: var(--sans);
+  font-variant-numeric: normal;
+}
+
+.planejamento-calc-rule {
+  margin: 2px 0;
+  border: 0;
+  border-top: 1px solid var(--divider);
+}
+
+.planejamento-calc-sugerido span:first-child,
+.planejamento-calc-sugerido span:last-child {
+  color: var(--fg-hero);
+  font-weight: 500;
 }
 
 

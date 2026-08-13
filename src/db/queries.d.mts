@@ -212,16 +212,31 @@ export interface PlanningFixoInput {
   dayOfMonth: number;
 }
 
-export interface PlanningPayload {
-  balanceCents: bigint;
+export interface PlanningAssumptionsPayload {
   categories: PlanningCategoryInput[];
   fixos: PlanningFixoInput[];
+}
+
+export interface PlanningPayload extends PlanningAssumptionsPayload {
+  balanceCents: bigint;
 }
 
 export interface ConfirmPlanningResult {
   estimateCents: bigint;
   monthlyTotal: bigint;
 }
+
+export interface SavePlanningAssumptionsResult {
+  estimateCents: bigint | null;
+  monthlyTotal: bigint;
+  budgetSaved: boolean;
+}
+
+export function savePlanningAssumptions(
+  db: PGlite,
+  today: string,
+  payload: PlanningAssumptionsPayload,
+): Promise<SavePlanningAssumptionsResult>;
 
 export function confirmPlanning(
   db: PGlite,
