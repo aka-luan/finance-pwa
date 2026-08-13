@@ -402,6 +402,167 @@ async function deactivateRecurrenceTx(tx, id, today) {
   );
 }
 
+function validateFixos(fixos) {
+  for (const f of fixos) {
+    if (f.amountCents > 0n && (!f.label || !f.label.trim())) {
+      throw new Error('Descrição da entrada/saída fixa não pode ficar em branco.');
+    }
+    if (f.amountCents > 0n) {
+      const day = f.dayOfMonth;
+      if (!Number.isInteger(day) || day < 1 || day > 31) {
+        throw new Error('Dia do mês das fixas precisa estar entre 1 e 31.');
+      }
+    }
+  }
+}
+
+function monthlyTotalOf(categories) {
+  return categories.reduce((s, c) => s + c.plannedCents, 0n);
+}
+
+async function upsertCategoriesTx(tx, categories) {
+  const categoryIds = new Map();
+  for (const cat of categories) {
+    const name = cat.name.trim();
+    if (!name) throw new Error('Nome de categoria não pode ficar em branco.');
+    let id = cat.id ?? null;
+    if (id) {
+      await tx.query(
+        `insert into category (id, name) values ($1, $2)
+         on conflict (id) do update set name = excluded.name`,
+        [id, name],
+      );
+    } else {
+      const existing = await tx.query('select id from category where name = $1', [name]);
+      if (existing.rows[0]) {
+        id = existing.rows[0].id;
+      } else {
+        id = crypto.randomUUID();
+        await tx.query('insert into category (id, name) values ($1, $2)', [id, name]);
+      }
+    }
+    categoryIds.set(name, id);
+  }
+  return categoryIds;
+}
+
+async function saveBudgetAndEstimateTx(tx, today, categories, categoryIds, estimateCents) {
+  let liveBudgetId;
+  const existingBudget = await tx.query(
+    'select id from monthly_budget where effective_from = $1::date',
+    [today],
+  );
+  if (existingBudget.rows[0]) {
+    liveBudgetId = existingBudget.rows[0].id;
+    await tx.query('delete from monthly_budget_line where budget_id = $1', [liveBudgetId]);
+  } else {
+    liveBudgetId = crypto.randomUUID();
+    await tx.query(
+      'insert into monthly_budget (id, effective_from) values ($1, $2::date)',
+      [liveBudgetId, today],
+    );
+  }
+  for (const cat of categories) {
+    const name = cat.name.trim();
+    const categoryId = categoryIds.get(name);
+    await tx.query(
+      `insert into monthly_budget_line (budget_id, category_id, amount_cents)
+       values ($1, $2, $3)`,
+      [liveBudgetId, categoryId, cat.plannedCents],
+    );
+  }
+
+  await tx.query(
+    `insert into daily_estimate (id, amount_cents, effective_from)
+     values ($1, $2, $3::date)
+     on conflict (effective_from) do update set amount_cents = excluded.amount_cents`,
+    [crypto.randomUUID(), estimateCents, today],
+  );
+}
+
+async function reconcileFixosTx(tx, today, fixos) {
+  const active = await tx.query(
+    `select id from recurrence
+     where target = 'account'
+       and (end_date is null or end_date > $1::date)`,
+    [today],
+  );
+  const activeIds = new Set(active.rows.map((r) => r.id));
+  const keptIds = new Set();
+
+  for (const f of fixos) {
+    if (f.amountCents <= 0n) {
+      if (f.id && activeIds.has(f.id)) {
+        await deactivateRecurrenceTx(tx, f.id, today);
+      }
+      continue;
+    }
+    const label = f.label.trim();
+    if (f.id && activeIds.has(f.id)) {
+      await tx.query(
+        `update recurrence
+         set kind = $2, amount_cents = $3, day_of_month = $4, label = $5
+         where id = $1 and target = 'account'`,
+        [f.id, f.kind, f.amountCents, f.dayOfMonth, label],
+      );
+      keptIds.add(f.id);
+    } else {
+      const id = f.id && !activeIds.has(f.id) ? f.id : crypto.randomUUID();
+      await tx.query(
+        `insert into recurrence
+           (id, kind, target, amount_cents, day_of_month, label, start_date)
+         values ($1, $2, 'account', $3, $4, $5, $6::date)`,
+        [id, f.kind, f.amountCents, f.dayOfMonth, label, today],
+      );
+      keptIds.add(id);
+    }
+  }
+
+  for (const id of activeIds) {
+    if (!keptIds.has(id)) {
+      await deactivateRecurrenceTx(tx, id, today);
+    }
+  }
+}
+
+/**
+ * Persist planning assumptions without touching the account anchor.
+ *
+ * payload: {
+ *   categories: { id?: string, name: string, plannedCents: bigint }[],
+ *   fixos: { id?: string, kind: 'entrada'|'saida', label: string,
+ *            amountCents: bigint, dayOfMonth: number }[],
+ * }
+ *
+ * Fixos always reconcile (ADR 0005). Composition + daily_estimate write
+ * only when the everyday total is > 0 — otherwise the vigente estimate
+ * is left alone (Planejamento can edit recurrences without wiping Hoje).
+ */
+export async function savePlanningAssumptions(db, today, payload) {
+  const categories = payload.categories ?? [];
+  const fixos = payload.fixos ?? [];
+  validateFixos(fixos);
+
+  const monthlyTotal = monthlyTotalOf(categories);
+  const writeBudget = monthlyTotal > 0n;
+  if (writeBudget) {
+    for (const cat of categories) {
+      if (!cat.name.trim()) throw new Error('Nome de categoria não pode ficar em branco.');
+    }
+  }
+  const estimateCents = writeBudget ? roundHalfUpDiv(monthlyTotal, 30n) : null;
+
+  await db.transaction(async (tx) => {
+    await reconcileFixosTx(tx, today, fixos);
+    if (writeBudget) {
+      const categoryIds = await upsertCategoriesTx(tx, categories);
+      await saveBudgetAndEstimateTx(tx, today, categories, categoryIds, estimateCents);
+    }
+  });
+
+  return { estimateCents, monthlyTotal, budgetSaved: writeBudget };
+}
+
 /**
  * Atomic wizard confirm (ADR 0003 + 0005).
  *
@@ -414,134 +575,25 @@ async function deactivateRecurrenceTx(tx, id, today) {
  *
  * Categories with any name used by lines are upserted. Fixos with
  * amountCents > 0 are created/updated; active account recurrences absent
- * from that set (or zeroed) are deactivated.
+ * from that set (or zeroed) are deactivated. Also writes the account
+ * anchor — Planejamento uses savePlanningAssumptions instead.
  */
 export async function confirmPlanning(db, today, payload) {
   const categories = payload.categories ?? [];
   const fixos = payload.fixos ?? [];
-  const monthlyTotal = categories.reduce((s, c) => s + c.plannedCents, 0n);
+  const monthlyTotal = monthlyTotalOf(categories);
   if (monthlyTotal <= 0n) {
     throw new Error('O orçamento mensal de gastos cotidianos precisa ser maior que zero.');
   }
-  for (const f of fixos) {
-    if (f.amountCents > 0n && (!f.label || !f.label.trim())) {
-      throw new Error('Descrição da entrada/saída fixa não pode ficar em branco.');
-    }
-    if (f.amountCents > 0n) {
-      const day = f.dayOfMonth;
-      if (!Number.isInteger(day) || day < 1 || day > 31) {
-        throw new Error('Dia do mês das fixas precisa estar entre 1 e 31.');
-      }
-    }
-  }
+  validateFixos(fixos);
 
   const estimateCents = roundHalfUpDiv(monthlyTotal, 30n);
 
   await db.transaction(async (tx) => {
-    // 1) Upsert categories by id when provided, else by name.
-    const categoryIds = new Map(); // name → id for lines
-    for (const cat of categories) {
-      const name = cat.name.trim();
-      if (!name) throw new Error('Nome de categoria não pode ficar em branco.');
-      let id = cat.id ?? null;
-      if (id) {
-        await tx.query(
-          `insert into category (id, name) values ($1, $2)
-           on conflict (id) do update set name = excluded.name`,
-          [id, name],
-        );
-      } else {
-        const existing = await tx.query('select id from category where name = $1', [name]);
-        if (existing.rows[0]) {
-          id = existing.rows[0].id;
-        } else {
-          id = crypto.randomUUID();
-          await tx.query('insert into category (id, name) values ($1, $2)', [id, name]);
-        }
-      }
-      categoryIds.set(name, id);
-    }
-
-    // 2) Anchor (same semantics as setAnchor).
+    const categoryIds = await upsertCategoriesTx(tx, categories);
     await setAnchorTx(tx, today, payload.balanceCents);
-
-    // 3) New monthly_budget + lines (zeros kept). Same effective_from as estimate.
-    let liveBudgetId;
-    const existingBudget = await tx.query(
-      'select id from monthly_budget where effective_from = $1::date',
-      [today],
-    );
-    if (existingBudget.rows[0]) {
-      liveBudgetId = existingBudget.rows[0].id;
-      await tx.query('delete from monthly_budget_line where budget_id = $1', [liveBudgetId]);
-    } else {
-      liveBudgetId = crypto.randomUUID();
-      await tx.query(
-        'insert into monthly_budget (id, effective_from) values ($1, $2::date)',
-        [liveBudgetId, today],
-      );
-    }
-    for (const cat of categories) {
-      const name = cat.name.trim();
-      const categoryId = categoryIds.get(name);
-      await tx.query(
-        `insert into monthly_budget_line (budget_id, category_id, amount_cents)
-         values ($1, $2, $3)`,
-        [liveBudgetId, categoryId, cat.plannedCents],
-      );
-    }
-
-    // 4) daily_estimate same effective_from.
-    await tx.query(
-      `insert into daily_estimate (id, amount_cents, effective_from)
-       values ($1, $2, $3::date)
-       on conflict (effective_from) do update set amount_cents = excluded.amount_cents`,
-      [crypto.randomUUID(), estimateCents, today],
-    );
-
-    // 5) Reconcile account fixos by uuid (ADR 0005).
-    const active = await tx.query(
-      `select id from recurrence
-       where target = 'account'
-         and (end_date is null or end_date > $1::date)`,
-      [today],
-    );
-    const activeIds = new Set(active.rows.map((r) => r.id));
-    const keptIds = new Set();
-
-    for (const f of fixos) {
-      if (f.amountCents <= 0n) {
-        if (f.id && activeIds.has(f.id)) {
-          await deactivateRecurrenceTx(tx, f.id, today);
-        }
-        continue;
-      }
-      const label = f.label.trim();
-      if (f.id && activeIds.has(f.id)) {
-        await tx.query(
-          `update recurrence
-           set kind = $2, amount_cents = $3, day_of_month = $4, label = $5
-           where id = $1 and target = 'account'`,
-          [f.id, f.kind, f.amountCents, f.dayOfMonth, label],
-        );
-        keptIds.add(f.id);
-      } else {
-        const id = f.id && !activeIds.has(f.id) ? f.id : crypto.randomUUID();
-        await tx.query(
-          `insert into recurrence
-             (id, kind, target, amount_cents, day_of_month, label, start_date)
-           values ($1, $2, 'account', $3, $4, $5, $6::date)`,
-          [id, f.kind, f.amountCents, f.dayOfMonth, label, today],
-        );
-        keptIds.add(id);
-      }
-    }
-
-    for (const id of activeIds) {
-      if (!keptIds.has(id)) {
-        await deactivateRecurrenceTx(tx, id, today);
-      }
-    }
+    await saveBudgetAndEstimateTx(tx, today, categories, categoryIds, estimateCents);
+    await reconcileFixosTx(tx, today, fixos);
   });
 
   return { estimateCents, monthlyTotal };

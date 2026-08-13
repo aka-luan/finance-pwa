@@ -11,6 +11,7 @@ import {
   listRecurrences,
   needsFirstRun,
   roundHalfUpDiv,
+  savePlanningAssumptions,
 } from './src/db/queries.mjs';
 
 const schemaSql = readFileSync(new URL('./schema.sql', import.meta.url), 'utf8');
@@ -227,6 +228,135 @@ const today = '2026-08-12';
     /maior que zero/i,
   );
   assert.equal(await needsFirstRun(db), true, 'failed confirm leaves gate on');
+}
+
+// ---------------------------------------------------------------------
+// savePlanningAssumptions: same forecast writes, no account_anchor
+// ---------------------------------------------------------------------
+{
+  const db = await freshDb();
+  const catId = 'c0000000-0000-0000-0000-000000000011';
+  const salarioId = 'b0000000-0000-0000-0000-000000000011';
+  const aluguelId = 'b0000000-0000-0000-0000-000000000012';
+
+  await confirmPlanning(db, today, {
+    balanceCents: 200_000n,
+    categories: [{ id: catId, name: 'Mercado', plannedCents: 90_000n }],
+    fixos: [
+      {
+        id: salarioId,
+        kind: 'entrada',
+        label: 'Salário',
+        amountCents: 500_000n,
+        dayOfMonth: 5,
+      },
+      {
+        id: aluguelId,
+        kind: 'saida',
+        label: 'Aluguel',
+        amountCents: 120_000n,
+        dayOfMonth: 10,
+      },
+    ],
+  });
+
+  await db.exec(`
+    insert into card (id, name, closing_day, due_day) values
+      ('ca000000-0000-0000-0000-000000000011', 'Nubank', 20, 5);
+    insert into recurrence (id, kind, target, card_id, amount_cents, day_of_month,
+                            label, start_date) values
+      ('b0000000-0000-0000-0000-000000000098', 'saida', 'card',
+       'ca000000-0000-0000-0000-000000000011', 4990, 1, 'Streaming', '2026-01-01');
+  `);
+
+  const before = await getHoje(db, today);
+  assert.equal(before.saldoCents, 200_000n);
+
+  const internetId = 'b0000000-0000-0000-0000-000000000013';
+  const monthlyTotal = 145_000n;
+  const result = await savePlanningAssumptions(db, today, {
+    categories: [
+      { id: catId, name: 'Mercado', plannedCents: 70_000n },
+      { name: 'Combustível', plannedCents: 45_000n },
+      { name: 'Lazer', plannedCents: 30_000n },
+    ],
+    fixos: [
+      {
+        id: salarioId,
+        kind: 'entrada',
+        label: 'Salário',
+        amountCents: 500_000n,
+        dayOfMonth: 7,
+      },
+      {
+        id: internetId,
+        kind: 'saida',
+        label: 'Internet',
+        amountCents: 12_000n,
+        dayOfMonth: 8,
+      },
+    ],
+  });
+
+  assert.equal(result.budgetSaved, true);
+  assert.equal(result.monthlyTotal, monthlyTotal);
+  assert.equal(result.estimateCents, roundHalfUpDiv(monthlyTotal, 30n));
+
+  const after = await getHoje(db, today);
+  assert.equal(after.saldoCents, 200_000n, 'anchor must stay put');
+  assert.equal(after.podeGastarCents, roundHalfUpDiv(monthlyTotal, 30n));
+
+  const recs = await listRecurrences(db, today);
+  const active = recs.filter((r) => r.active);
+  assert.equal(active.length, 2);
+  assert.equal(active.find((r) => r.id === salarioId).day_of_month, 7);
+  assert.ok(active.find((r) => r.id === internetId));
+  const aluguel = recs.find((r) => r.id === aluguelId);
+  assert.ok(aluguel);
+  assert.equal(aluguel.active, false, 'removed fixo is deactivated');
+
+  const cardRec = await db.query(
+    "select end_date from recurrence where id = 'b0000000-0000-0000-0000-000000000098'",
+  );
+  assert.equal(cardRec.rows[0].end_date, null, 'card recurrence must stay intact');
+
+  const budget = await getMonthlyBudget(db, today);
+  assert.equal(budget.lines.length, 3);
+
+  // Zero everyday total: fixos still reconcile, estimate/budget stay.
+  const estimateBefore = after.podeGastarCents;
+  const skipped = await savePlanningAssumptions(db, today, {
+    categories: [{ id: catId, name: 'Mercado', plannedCents: 0n }],
+    fixos: [
+      {
+        id: salarioId,
+        kind: 'entrada',
+        label: 'Salário',
+        amountCents: 0n,
+        dayOfMonth: 7,
+      },
+      {
+        id: internetId,
+        kind: 'saida',
+        label: 'Internet',
+        amountCents: 12_000n,
+        dayOfMonth: 8,
+      },
+    ],
+  });
+  assert.equal(skipped.budgetSaved, false);
+  assert.equal(skipped.estimateCents, null);
+
+  const hoje2 = await getHoje(db, today);
+  assert.equal(hoje2.saldoCents, 200_000n);
+  assert.equal(hoje2.podeGastarCents, estimateBefore, 'estimate left alone when total is 0');
+
+  const recs2 = await listRecurrences(db, today);
+  assert.equal(recs2.find((r) => r.id === salarioId).active, false, 'zeroed fixo deactivates');
+  assert.equal(recs2.find((r) => r.id === internetId).active, true);
+
+  const budget2 = await getMonthlyBudget(db, today);
+  assert.equal(budget2.lines.length, 3, 'composition not overwritten when total is 0');
 }
 
 console.log('pglite-wizard-test: ok');
