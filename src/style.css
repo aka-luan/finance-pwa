@@ -219,21 +219,23 @@ select {
 .wizard-fixed-card .wizard-money input,
 .recorrencia-detalhe,
 .recorrencia-dia-input,
-.linha-tempo-saldo,
-.linha-tempo-data {
+.previsao-saldo,
+.previsao-data,
+.previsao-mov-valor,
+.previsao-detalhe-valor {
   font-family: var(--mono);
   font-variant-numeric: tabular-nums;
 }
 
 /* Rótulo de seção: mono, 11px, uppercase, tracking fixo, muted legível.
-   Progresso do wizard, mês da linha do tempo, "TOTAL", "Dia do mês" —
+   Progresso do wizard, mês da Previsão, "TOTAL", "Dia do mês" —
    o mesmo objeto tipográfico, não cinco variações. */
 .secao-label,
 .config-secao,
 .wizard-section,
 .wizard-day-sheet-title,
 .wizard-progress,
-.linha-tempo-mes,
+.previsao-mes,
 .lancar-data-label,
 .lancar-total-label,
 .recorrencia-dia-label,
@@ -621,7 +623,7 @@ select {
   filter: brightness(1.08);
 }
 
-/* Acessos secundários (linha do tempo, configurações): empurrados para o
+/* Acessos secundários (Previsão, configurações): empurrados para o
    rodapé pelo espaçador flexível, com folga à direita para não ficarem sob
    o FAB, que é fixo. */
 .hoje-secundario {
@@ -1130,7 +1132,7 @@ select {
 }
 
 /* Telas secundárias — Acertar saldo, Configurações, Recorrências, Cartões,
-   Linha do tempo. Recolorização apenas: o layout atual continua, com a
+   Previsão. Recolorização apenas: o layout atual continua, com a
    paleta e as fontes novas. O desenho real delas vem de outra rodada
    (docs/design-handoff/design-request-secondary-elements.md). */
 
@@ -1140,7 +1142,7 @@ select {
 .screen-recorrencia-form,
 .screen-cartoes,
 .screen-cartao-form,
-.screen-linha-tempo,
+.screen-previsao,
 .screen-wizard,
 .screen-boot {
   display: flex;
@@ -1684,9 +1686,14 @@ select {
   gap: 5px;
 }
 
-/* Tela Linha do tempo (issue #9) */
+/* Tela Previsão (issue #9): ledger dia a dia, sem cards. Título e Voltar
+   ficam pinados; só a lista rola, para o mês sticky funcionar. */
 
-.linha-tempo-lista {
+.screen-previsao {
+  overflow: hidden;
+}
+
+.previsao-lista {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
@@ -1694,44 +1701,183 @@ select {
   -webkit-overflow-scrolling: touch;
 }
 
-.linha-tempo-mes {
+.previsao-mes {
   position: sticky;
   top: 0;
+  z-index: 1;
   background: var(--bg);
-  margin: 14px 0 var(--space-1);
-  padding: var(--space-1) 0;
+  margin: var(--space-4) 0 var(--space-1);
+  padding: var(--space-2) 0 var(--space-1);
 }
 
-.linha-tempo-dias {
+.previsao-mes:first-child {
+  margin-top: 0;
+}
+
+.previsao-dias {
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
-.linha-tempo-dia {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-2);
-  padding: 6px 0;
+.previsao-dia {
+  display: grid;
+  grid-template-columns: 2.75ch 1fr auto;
+  column-gap: var(--space-2);
   border-bottom: 1px solid var(--divider);
 }
 
-.linha-tempo-data {
-  color: var(--fg-muted);
-  font-size: 12.5px;
+.previsao-quieto {
+  min-height: 46px;
+  align-items: center;
+  padding: 0;
 }
 
-.linha-tempo-saldo {
+.previsao-data {
+  grid-column: 1;
+  color: var(--fg-muted);
+  font-size: 12.5px;
+  line-height: 1.2;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+}
+
+.previsao-marca {
+  font-size: 9px;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+  white-space: nowrap;
+}
+
+.previsao-saldo {
+  grid-column: 3;
   font-size: 14px;
+  font-weight: 400;
+  color: var(--fg-muted);
+  justify-self: end;
+}
+
+.previsao-hoje .previsao-data {
+  color: var(--fg-hero);
   font-weight: 500;
 }
 
-/* Dias projetados: mesmo dado, peso visual menor — é estimativa, não o
-   real já lançado (regra "real vence projeção", SPEC.md §4). */
-.linha-tempo-projetado .linha-tempo-saldo {
-  font-weight: 400;
+.previsao-min .previsao-saldo {
+  font-weight: 600;
+}
+
+.previsao-evento {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.previsao-dia-btn {
+  display: grid;
+  grid-template-columns: 2.75ch 1fr auto;
+  column-gap: var(--space-2);
+  row-gap: 2px;
+  width: 100%;
+  margin: 0;
+  padding: 8px 0;
+  background: none;
+  border: none;
+  color: inherit;
+  text-align: left;
+  font: inherit;
+  border-radius: 0;
+}
+
+.previsao-dia-btn:active {
+  background: var(--surface-pressed);
+}
+
+.previsao-evento .previsao-data {
+  grid-column: 1;
+  grid-row: 1;
+  align-self: start;
+  padding-top: 2px;
+}
+
+.previsao-mov {
+  grid-column: 2 / 4;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  column-gap: var(--space-2);
+  min-width: 0;
+}
+
+.previsao-mov-label {
+  color: var(--fg);
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.previsao-mov-valor {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--fg);
+  justify-self: end;
+  white-space: nowrap;
+}
+
+.previsao-mov-diario .previsao-mov-label,
+.previsao-mov-diario .previsao-mov-valor {
   color: var(--fg-muted);
+  font-weight: 400;
+  font-size: 12px;
+}
+
+.previsao-evento .previsao-saldo {
+  grid-column: 3;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--fg);
+  padding-top: 2px;
+}
+
+.previsao-evento.previsao-min .previsao-saldo {
+  font-weight: 600;
+}
+
+.previsao-saldo.valor-negativo {
+  color: var(--negativo);
+}
+
+.previsao-detalhe {
+  padding: 0 0 10px;
+  padding-left: calc(2.75ch + var(--space-2));
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.previsao-detalhe[hidden] {
+  display: none;
+}
+
+.previsao-detalhe-linha {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font-size: 12px;
+  color: var(--fg-muted);
+}
+
+.previsao-detalhe-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.previsao-detalhe-valor {
+  white-space: nowrap;
 }
 
 /* Empurrar/voltar entre telas: o gesto de borda do iOS dispara o

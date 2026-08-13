@@ -359,6 +359,109 @@ where r.day >= p_from
 order by r.day;
 $$;
 
+-- Causas nomeadas do movimento de cada dia na janela da Previsão. Espelha
+-- os filtros de timeline() (real; recorrência/fatura/estimativa só depois
+-- de p_today; exceção e pagamento real vencem a projeção). Não calcula
+-- saldo — isso continua em timeline().
+create or replace function timeline_movements(
+  p_from date, p_to date, p_today date default current_date
+)
+returns table (
+  day          date,
+  source       text,
+  kind         tx_kind,
+  label        text,
+  signed_cents bigint
+)
+language sql stable as $$
+with span as (
+  select generate_series(p_from, p_to, interval '1 day')::date as day
+),
+real_tx as (
+  select
+    t.date as day,
+    'transaction'::text as source,
+    t.kind,
+    coalesce(
+      nullif(r.label, ''),
+      nullif(c.name, ''),
+      nullif(t.note, ''),
+      case t.kind
+        when 'entrada' then 'Entrada'
+        when 'saida' then 'Saída'
+        else 'Diário'
+      end
+    ) as label,
+    (case when t.kind = 'entrada' then t.amount_cents
+          else -t.amount_cents end)::bigint as signed_cents
+  from transaction t
+  left join recurrence r on r.id = t.recurrence_id
+  left join category c on c.id = t.category_id
+  where t.date between p_from and p_to
+),
+proj_rec as (
+  select
+    s.day,
+    'recurrence'::text as source,
+    r.kind,
+    r.label,
+    (case when r.kind = 'entrada' then r.amount_cents
+          else -r.amount_cents end)::bigint as signed_cents
+  from span s
+  join recurrence r
+    on r.target = 'account'
+   and s.day >= r.start_date
+   and (r.end_date is null or s.day <= r.end_date)
+   and s.day = clamp_day(date_trunc('month', s.day)::date, r.day_of_month)
+  where s.day > p_today
+    and not exists (
+      select 1 from transaction t
+      where t.recurrence_id = r.id and t.occurrence_date = s.day)
+),
+proj_bill as (
+  select
+    b.due_date as day,
+    'bill'::text as source,
+    'saida'::tx_kind as kind,
+    'Fatura ' || c.name as label,
+    (-b.amount_cents)::bigint as signed_cents
+  from card_bill b
+  join card c on c.id = b.card_id
+  where b.due_date between p_from and p_to
+    and b.due_date > p_today
+    and not exists (
+      select 1 from transaction t
+      where t.card_id = b.card_id and t.cycle_month = b.cycle_month)
+),
+proj_daily as (
+  select
+    s.day,
+    'diario'::text as source,
+    'diario'::tx_kind as kind,
+    'Diário'::text as label,
+    (-e.amount_cents)::bigint as signed_cents
+  from span s
+  cross join lateral (
+    select amount_cents from daily_estimate d
+    where d.effective_from <= s.day
+    order by d.effective_from desc
+    limit 1
+  ) e
+  where s.day > p_today
+    and not exists (
+      select 1 from transaction t
+      where t.date = s.day and t.kind = 'diario')
+)
+select day, source, kind, label, signed_cents from real_tx
+union all
+select day, source, kind, label, signed_cents from proj_rec
+union all
+select day, source, kind, label, signed_cents from proj_bill
+union all
+select day, source, kind, label, signed_cents from proj_daily
+order by 1;
+$$;
+
 -- Saldo de um dia só.
 create or replace function balance_on(p_day date, p_today date default current_date)
 returns bigint language sql stable as $$
