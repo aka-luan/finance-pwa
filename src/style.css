@@ -101,6 +101,10 @@
    iOS still zooms when the target itself is `auto`. */
 html {
   touch-action: manipulation;
+  height: 100%;
+  height: 100dvh;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 button,
@@ -117,6 +121,11 @@ input {
   font-family: inherit;
 }
 
+button {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
 /* iOS Safari zooms the page when a focused field computes under 16px.
    Keep that floor here; screens that want a larger field set it themselves. */
 input,
@@ -129,10 +138,45 @@ input::placeholder {
   color: var(--fg-placeholder);
 }
 
+html,
+body {
+  overscroll-behavior: none;
+  overflow: hidden;
+}
+
 body {
   margin: 0;
   background: var(--bg);
   color: var(--fg);
+  min-height: 100%;
+  min-height: 100dvh;
+  height: 100%;
+  height: 100dvh;
+  overflow: hidden;
+  /* Grey flash on tap is the tell that this is a webpage. Press feedback
+     is :active (enabled by the document touchstart in nav.ts). */
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+input,
+textarea,
+select {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* Values people copy into the bank app. */
+.hoje-hero-numero,
+.saldo-valor,
+.marco-valor,
+.valor-input,
+.simular-input,
+.lancar-total-valor {
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 :focus-visible {
@@ -215,16 +259,26 @@ body {
 }
 
 #app {
-  min-height: 100vh;
+  height: 100%;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
+  background: var(--bg);
 }
 
 /* Safe-area no topo: em aparelhos com notch o recorte é maior que o
-   padding base, daí o max() em vez de somar. */
+   padding base, daí o max() em vez de somar. The screen is the scroller
+   so the document itself doesn't rubber-band (that bounce is Safari, not
+   an app). #app is the screen, so overflow lives here — not on #app
+   alone, which would beat .screen on specificity and freeze scrolling. */
 .screen {
   padding: max(var(--space-5), env(safe-area-inset-top)) var(--lado) max(var(--space-5), env(safe-area-inset-bottom));
   flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  background: var(--bg);
 }
 
 /* Tela Hoje */
@@ -1132,6 +1186,7 @@ body {
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .screen-wizard .tela-footer,
@@ -1635,6 +1690,8 @@ body {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .linha-tempo-mes {
@@ -1675,4 +1732,58 @@ body {
 .linha-tempo-projetado .linha-tempo-saldo {
   font-weight: 400;
   color: var(--fg-muted);
+}
+
+/* Empurrar/voltar entre telas: o gesto de borda do iOS dispara o
+   histórico; isto é o que se vê. Sem isto, cada toque só troca o HTML
+   no mesmo lugar — o sinal de que ainda é um site. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.35s;
+  animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
+  animation-fill-mode: both;
+}
+
+html[data-nav='forward']::view-transition-old(root) {
+  animation-name: nav-exit-left;
+  z-index: 1;
+}
+
+html[data-nav='forward']::view-transition-new(root) {
+  animation-name: nav-enter-right;
+  z-index: 2;
+}
+
+html[data-nav='back']::view-transition-old(root) {
+  animation-name: nav-exit-right;
+  z-index: 2;
+}
+
+html[data-nav='back']::view-transition-new(root) {
+  animation-name: nav-enter-left;
+  z-index: 1;
+}
+
+@keyframes nav-enter-right {
+  from {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes nav-exit-left {
+  to {
+    transform: translateX(-30%);
+  }
+}
+
+@keyframes nav-enter-left {
+  from {
+    transform: translateX(-30%);
+  }
+}
+
+@keyframes nav-exit-right {
+  to {
+    transform: translateX(100%);
+  }
 }

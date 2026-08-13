@@ -7,8 +7,8 @@ import {
   updateRecurrence,
   type Recurrence,
 } from '../db/queries.mjs';
-import { renderConfiguracoes } from './configuracoes';
 import { formatCents } from './format';
+import { back, push, replace } from './nav';
 import { createAmountField, createNumpad } from './numpad';
 
 // Tela Recorrências (issue #5): CRUD de entrada/saída em dia fixo do mês,
@@ -27,7 +27,7 @@ export function renderRecorrencias(app: HTMLDivElement): void {
   novaBtn.type = 'button';
   novaBtn.className = 'btn-bloco';
   novaBtn.textContent = 'Nova recorrência';
-  novaBtn.addEventListener('click', () => renderRecorrenciaForm(app));
+  novaBtn.addEventListener('click', () => push((el) => renderRecorrenciaForm(el)));
 
   const status = document.createElement('p');
   status.className = 'config-status';
@@ -40,7 +40,7 @@ export function renderRecorrencias(app: HTMLDivElement): void {
   voltarBtn.type = 'button';
   voltarBtn.className = 'btn-voltar';
   voltarBtn.textContent = 'Voltar';
-  voltarBtn.addEventListener('click', () => renderConfiguracoes(app));
+  voltarBtn.addEventListener('click', () => back());
 
   app.append(title, novaBtn, status, list, voltarBtn);
 
@@ -83,7 +83,7 @@ function renderItem(app: HTMLDivElement, rec: Recurrence, status: HTMLElement): 
   // não mexe em end_date, então o registro voltaria pra tela ainda inativa.
   // Reativar não é escopo deste ticket, então o clique fica desligado.
   if (rec.active) {
-    info.addEventListener('click', () => renderRecorrenciaForm(app, rec));
+    info.addEventListener('click', () => push((el) => renderRecorrenciaForm(el, rec)));
   } else {
     info.disabled = true;
   }
@@ -114,7 +114,7 @@ function renderItem(app: HTMLDivElement, rec: Recurrence, status: HTMLElement): 
         try {
           const db = await getDb();
           await deactivateRecurrence(db, rec.id, todayBelem());
-          renderRecorrencias(app);
+          replace(renderRecorrencias);
         } catch (err) {
           desativarBtn.disabled = false;
           status.textContent = `Falha ao desativar: ${(err as Error).message}`;
@@ -203,7 +203,7 @@ function renderRecorrenciaForm(app: HTMLDivElement, existing?: Recurrence): void
   cancelarBtn.type = 'button';
   cancelarBtn.className = 'btn-secundario';
   cancelarBtn.textContent = 'Cancelar';
-  cancelarBtn.addEventListener('click', () => renderRecorrencias(app));
+  cancelarBtn.addEventListener('click', () => back());
 
   const salvarBtn = document.createElement('button');
   salvarBtn.type = 'button';
@@ -238,7 +238,7 @@ function renderRecorrenciaForm(app: HTMLDivElement, existing?: Recurrence): void
       } else {
         await createRecurrence(db, { kind, dayOfMonth, amountCents, label, startDate: todayBelem() });
       }
-      renderRecorrencias(app);
+      back();
     } catch (err) {
       salvarBtn.disabled = false;
       cancelarBtn.disabled = false;
