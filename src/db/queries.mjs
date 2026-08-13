@@ -10,11 +10,11 @@ export function todayBelem() {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Belem' }).format(new Date());
 }
 
-// Saldo em conta and quanto posso gastar hoje (SPEC.md §6). "Posso gastar"
-// is the daily_estimate vigente hoje minus what's already been lançado
-// today — the only in-scope material for it, since marcos/pior-momento
-// (worst_point/milestones) are ticket #6, not this one. It's allowed to go
-// negative: §4's invariant is that wrongness must be visible, not clamped.
+// Saldo em conta and quanto posso gastar hoje. "Posso gastar" is the
+// daily_estimate vigente hoje minus what's already been lançado today —
+// a fatia acionável da mesma previsão que milestones/worst_point leem
+// de timeline. Pode ficar negativo: o invariante é que o erro precisa
+// aparecer, não ser cortado (SPEC.md §4).
 export async function getHoje(db, today) {
   const saldoResult = await db.query(
     'select balance_on($1::date, $1::date) as saldo_cents',
@@ -44,8 +44,9 @@ export async function getHoje(db, today) {
   return { saldoCents, podeGastarCents };
 }
 
-// Marcos da Tela Hoje (SPEC.md §6): saldo projetado em fim do mês, +3, +6
-// e +12 meses. what_if espelha o parâmetro jsonb de timeline_sim — o mesmo
+// Marcos do Termômetro: saldo projetado em fim do mês, +3, +6 e +12
+// meses — os mesmos pontos da timeline que a Previsão mostra por
+// completo. what_if espelha o parâmetro jsonb de timeline_sim — o mesmo
 // array alimenta getMarcos e getWorstPoint a partir do campo "e se eu
 // gastar ___", sem gravar nada.
 export async function getMarcos(db, today, whatIf = []) {
@@ -56,8 +57,8 @@ export async function getMarcos(db, today, whatIf = []) {
   return rows;
 }
 
-// Pior momento da janela de 12 meses (SPEC.md §6): menor saldo e o dia em
-// que ocorre.
+// Pior momento da janela de 12 meses: menor saldo e o dia em que ocorre.
+// Mesma timeline_sim dos marcos e da Previsão.
 export async function getWorstPoint(db, today, whatIf = []) {
   const { rows } = await db.query('select day, balance_cents from worst_point($1::date, $2::jsonb)', [
     today,
@@ -66,10 +67,9 @@ export async function getWorstPoint(db, today, whatIf = []) {
   return rows[0];
 }
 
-// Previsão (issue #9, SPEC.md §6): acesso secundário aos 12 meses dia a
-// dia, direto de timeline() — milestones/worst_point já usam timeline_sim
-// para os resumos da Tela Hoje; esta tela mostra a janela inteira, sem
-// simulação.
+// Previsão: janela de 12 meses dia a dia, direto de timeline() —
+// o mesmo motor dos resumos do Termômetro (milestones/worst_point via
+// timeline_sim). Esta tela mostra a janela inteira, sem simulação.
 export async function getTimeline(db, today) {
   const { rows } = await db.query(
     `select day, balance_cents, is_projection

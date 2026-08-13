@@ -170,8 +170,7 @@ select {
 
 /* Values people copy into the bank app. */
 .hoje-hero-numero,
-.saldo-valor,
-.marco-valor,
+.hoje-metrica-valor,
 .valor-input,
 .simular-input,
 .lancar-total-valor {
@@ -185,17 +184,14 @@ select {
 }
 
 /* Todo valor em dígitos usa a mono com tabular-nums: é o que mantém as
-   colunas de marcos e a lista de lançamentos alinhadas dígito a dígito. */
+   métricas do Termômetro e a lista de lançamentos alinhadas dígito a dígito. */
 .num,
 .hoje-hero-numero,
 .hoje-hero-moeda,
 .hoje-data,
-.saldo-valor,
-.marco-valor,
-.marco-delta,
-.marco-data,
-.pior-valor,
-.pior-era,
+.hoje-metrica-valor,
+.hoje-metrica-delta,
+.hoje-metrica-quando,
 .simular-input,
 .simular-moeda,
 .simular-chip,
@@ -320,7 +316,7 @@ select {
 }
 
 .hoje-hero {
-  margin-bottom: var(--space-4);
+  margin-bottom: var(--space-5);
 }
 
 .hoje-hero-label {
@@ -364,127 +360,72 @@ select {
   color: var(--fg-secundario);
 }
 
-.saldo-linha {
+/* Resumo da previsão: o simulador pergunta, as linhas abaixo respondem.
+   Sem card extra nas métricas — o hero já é o número da tela; isto é só
+   o que a previsão diz, em voz baixa. */
+.hoje-previsao {
+  margin-bottom: 14px;
+}
+
+.hoje-previsao .simular {
+  margin-bottom: 0;
+}
+
+.hoje-metricas {
+  margin-top: var(--space-2);
+}
+
+.hoje-metrica {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  padding: var(--space-2) 0;
+  gap: var(--space-3);
+  padding: 7px 0;
   border-top: 1px solid var(--divider);
-  margin-bottom: 18px;
 }
 
-.saldo-label {
+.hoje-metrica-label {
   font-size: 12px;
   color: var(--fg-muted);
-}
-
-.saldo-valor {
-  font-size: 14px;
-  font-weight: 400;
-  color: var(--fg-secundario);
-}
-
-/* Marcos: quatro colunas iguais (SPEC.md §6). Lado a lado, a curva do ano
-   se lê de relance; empilhados, viram uma lista que ninguém percorre. */
-.marcos {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
-  margin-bottom: var(--space-3);
-}
-
-.marco {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
+  flex: 1;
   min-width: 0;
 }
 
-/* Altura fixa de duas linhas: "fim deste mês" quebra e "3 meses" não, e sem
-   isso os valores das quatro colunas não ficariam na mesma linha de base. */
-.marco-label {
-  font-size: 10.5px;
-  line-height: 1.2;
-  color: var(--fg-muted);
-  letter-spacing: 0.01em;
-  height: 25px;
-}
-
-/* Valor + data como um bloco só — o período acima é só a legenda. */
-.marco-leitura {
+.hoje-metrica-leitura {
   display: flex;
-  flex-direction: column;
-  gap: 1px;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
-.marco-valor {
-  font-size: 15px;
+.hoje-metrica-valor {
+  font-size: 13px;
   font-weight: 500;
   letter-spacing: -0.01em;
-  line-height: 1.15;
+  color: var(--fg-saldo);
 }
 
-.marco-data {
-  font-size: 10.5px;
+.hoje-metrica-quando {
+  font-size: 11px;
   color: var(--fg-muted);
-  letter-spacing: 0.04em;
-  line-height: 1.2;
+  letter-spacing: 0.02em;
 }
 
-.marco-delta {
+.hoje-metrica-delta {
   font-size: 11px;
   letter-spacing: -0.01em;
   color: var(--ambar);
-  line-height: 1.2;
 }
 
-.marco-delta:empty {
-  display: none;
-}
-
-/* Nas telas mais estreitas (iPhone SE/mini, 375px) um saldo negativo de
-   quatro dígitos — "−2.214,07", nove caracteres — não cabe no quarto de
-   largura que o design reserva a cada marco, e as duas últimas colunas se
-   encostam. O tamanho do handoff vale a partir de ~390px; abaixo disso as
-   quatro colunas continuam sendo o certo, só com o dígito um pouco menor. */
-@media (max-width: 390px) {
-  .marcos {
-    gap: 8px;
-  }
-
-  .marco-valor {
-    font-size: 13.5px;
-  }
-}
-
-.pior-momento {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  flex-wrap: wrap;
-  padding-top: var(--space-3);
-  border-top: 1px solid var(--divider);
-  margin-bottom: var(--space-4);
-}
-
-.pior-label,
-.pior-data {
-  font-size: 12.5px;
-  color: var(--fg-secundario);
-}
-
-.pior-valor {
-  font-size: 13.5px;
-  font-weight: 500;
-}
-
-.pior-era {
+.hoje-metricas-erro {
   font-size: 12px;
-  color: var(--ambar);
+  color: var(--fg-muted);
+  margin: var(--space-2) 0 0;
 }
 
 /* "E se eu gastar ___": a borda acende em âmbar enquanto há valor, que é o
-   único sinal de que os marcos acima já não são o saldo real (SPEC.md §6). */
+   sinal de que as métricas abaixo já não são o saldo real. */
 .simular {
   background: var(--surface-card);
   border: 1px solid var(--divider);
@@ -629,9 +570,9 @@ select {
   filter: brightness(1.08);
 }
 
-/* Acessos secundários (Previsão, Planejamento, configurações): empurrados para o
-   rodapé pelo espaçador flexível, com folga à direita para não ficarem sob
-   o FAB, que é fixo. */
+/* Acessos secundários (previsão completa, Planejamento, configurações):
+   empurrados para o rodapé pelo espaçador flexível, com folga à direita
+   para não ficarem sob o FAB, que é fixo. */
 .hoje-secundario {
   margin-top: auto;
   padding-top: var(--space-4);
