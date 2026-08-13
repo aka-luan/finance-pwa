@@ -123,13 +123,9 @@ export function renderLancar(app: HTMLDivElement, options: LancarOptions = {}): 
   const list = document.createElement('ol');
   list.className = 'lancar-lista';
 
-  const vazioEl = document.createElement('p');
-  vazioEl.className = 'lancar-vazio';
-  vazioEl.textContent = 'nenhum valor lançado ainda';
-
   const listaArea = document.createElement('div');
   listaArea.className = 'lancar-lista-area';
-  listaArea.append(list, vazioEl);
+  listaArea.append(list);
 
   // --- Total -------------------------------------------------------------
 
@@ -138,7 +134,7 @@ export function renderLancar(app: HTMLDivElement, options: LancarOptions = {}): 
 
   const totalLabel = document.createElement('span');
   totalLabel.className = 'lancar-total-label';
-  totalLabel.textContent = 'Total';
+  totalLabel.textContent = 'Adicionado';
 
   const totalValor = document.createElement('span');
   totalValor.className = 'lancar-total-valor';
@@ -160,15 +156,19 @@ export function renderLancar(app: HTMLDivElement, options: LancarOptions = {}): 
   // --- Campo de valor ----------------------------------------------------
 
   // Um campo só — trocar o tipo não pode apagar o que já está no teclado.
-  // No modo lista o valor em digitação aparece acima do numpad (display)
-  // e no botão Adicionar; o Total é só o que já entrou na lista. Em Cartão
-  // o display some e o valor vai para a linha do Total.
-  const amount = createAmountField('Valor');
+  // No modo lista, Adicionado é a soma já na lista; Digitando é o buffer
+  // do numpad, repetido no botão Adicionar. Em Cartão o buffer some e o
+  // valor vai para a linha do Total.
+  const amount = createAmountField('Digitando');
   amount.input.classList.add('lancar-buffer');
+
+  const bufferLabel = document.createElement('span');
+  bufferLabel.className = 'lancar-buffer-label';
+  bufferLabel.textContent = 'Digitando';
 
   const bufferRow = document.createElement('div');
   bufferRow.className = 'lancar-buffer-row';
-  bufferRow.append(amount.input);
+  bufferRow.append(bufferLabel, amount.input);
 
   const renderTotal = (): void => {
     const total = isLista(tipo)
@@ -208,7 +208,7 @@ export function renderLancar(app: HTMLDivElement, options: LancarOptions = {}): 
       list.append(li);
     });
 
-    vazioEl.hidden = items.length > 0;
+    listaArea.hidden = items.length === 0;
     renderTotal();
     updateActions();
   };
@@ -224,7 +224,7 @@ export function renderLancar(app: HTMLDivElement, options: LancarOptions = {}): 
   // --- Ações: Adicionar / Salvar / Não gastei nada ----------------------
 
   // Uma ação óbvia por estágio: o valor digitado só vive no Adicionar;
-  // Total é a soma já na lista. Salvar auto-grava o buffer (caminho rápido
+  // Adicionado é a soma já na lista. Salvar auto-grava o buffer (caminho rápido
   // de um valor só). Não gastei nada só aparece com a lista e o buffer
   // vazios — senão seria uma saída que descarta o que já se digitou.
   const adicionarBtn = document.createElement('button');
@@ -426,9 +426,10 @@ export function renderLancar(app: HTMLDivElement, options: LancarOptions = {}): 
     const lista = isLista(tipo);
     dataBloco.hidden = !lista;
     cartaoPickers.hidden = lista;
-    listaArea.hidden = !lista;
+    listaArea.hidden = !lista || items.length === 0;
     bufferRow.hidden = !lista;
     previewEl.hidden = lista;
+    totalLabel.textContent = lista ? 'Adicionado' : 'Total';
     kindHint.textContent = KIND_HINT[tipo];
     errorEl.textContent = '';
     if (lista) previewEl.textContent = '';

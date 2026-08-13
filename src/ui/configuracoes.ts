@@ -30,11 +30,7 @@ export function renderConfiguracoes(app: HTMLDivElement): void {
   cartoesTitle.className = 'config-secao';
   cartoesTitle.textContent = 'Cartões';
 
-  const cartoesBtn = document.createElement('button');
-  cartoesBtn.type = 'button';
-  cartoesBtn.className = 'btn-bloco';
-  cartoesBtn.textContent = 'Gerenciar cartões';
-  cartoesBtn.addEventListener('click', () => push(renderCartoes));
+  const cartoesBtn = configRow('Gerenciar cartões', () => push(renderCartoes));
 
   const planejamentoTitle = document.createElement('h2');
   planejamentoTitle.className = 'config-secao';
@@ -45,20 +41,13 @@ export function renderConfiguracoes(app: HTMLDivElement): void {
   planejamentoExplicacao.textContent =
     'Entradas fixas, contas e gastos cotidianos que alimentam a previsão.';
 
-  const planejamentoBtn = document.createElement('button');
-  planejamentoBtn.type = 'button';
-  planejamentoBtn.className = 'btn-bloco';
-  planejamentoBtn.textContent = 'Abrir planejamento';
-  planejamentoBtn.addEventListener('click', () => push(renderPlanejamento));
+  const planejamentoBtn = configRow('Abrir planejamento', () => push(renderPlanejamento));
 
   const estimativaTitle = document.createElement('h2');
   estimativaTitle.className = 'config-secao';
   estimativaTitle.textContent = 'Estimativa diária';
 
-  const revisarBtn = document.createElement('button');
-  revisarBtn.type = 'button';
-  revisarBtn.className = 'btn-bloco';
-  revisarBtn.textContent = 'Rever estimativa';
+  const revisarBtn = configRow('Rever estimativa');
 
   const sectionTitle = document.createElement('h2');
   sectionTitle.className = 'config-secao';
@@ -254,6 +243,10 @@ export function renderConfiguracoes(app: HTMLDivElement): void {
   exportarBtn.addEventListener('click', () => void exportar());
   fileInput.addEventListener('change', () => void escolherArquivo());
 
+  const backupAcoes = document.createElement('div');
+  backupAcoes.className = 'config-backup';
+  backupAcoes.append(exportarBtn, restaurarBtn, fileInput);
+
   app.append(
     title,
     cartoesTitle,
@@ -265,13 +258,30 @@ export function renderConfiguracoes(app: HTMLDivElement): void {
     revisarBtn,
     sectionTitle,
     explanation,
-    exportarBtn,
-    restaurarBtn,
-    fileInput,
+    backupAcoes,
     status,
     confirmacao,
     voltarBtn,
   );
+}
+
+function configRow(label: string, onClick?: () => void): HTMLButtonElement {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'config-row';
+
+  const text = document.createElement('span');
+  text.className = 'config-row-label';
+  text.textContent = label;
+
+  const chevron = document.createElement('span');
+  chevron.className = 'config-row-chevron';
+  chevron.textContent = '›';
+  chevron.setAttribute('aria-hidden', 'true');
+
+  btn.append(text, chevron);
+  if (onClick) btn.addEventListener('click', onClick);
+  return btn;
 }
 
 function download(filename: string, text: string): void {

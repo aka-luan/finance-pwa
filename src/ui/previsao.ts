@@ -331,13 +331,34 @@ function orderedMovements(movements: TimelineMovement[]): TimelineMovement[] {
   return [...events, ...diario];
 }
 
-function formatSignedCents(cents: bigint): string {
-  if (cents > 0n) return `+${formatCents(cents)}`;
-  return formatCents(cents);
-}
-
 function movementHint(source: TimelineMovement['source']): string {
   return source === 'transaction' ? 'lançado' : 'projeção';
+}
+
+function renderMovimento(movement: TimelineMovement): HTMLElement {
+  const mov = document.createElement('span');
+  mov.className = 'previsao-mov';
+  if (movement.source === 'diario') mov.classList.add('previsao-mov-diario');
+
+  const label = document.createElement('span');
+  label.className = 'previsao-mov-label';
+  label.textContent = movement.label;
+
+  const valor = document.createElement('span');
+  valor.className = 'previsao-mov-valor';
+  valor.textContent = formatSignedAmount(movement.signed_cents);
+
+  mov.append(label, valor);
+  return mov;
+}
+
+function renderCausas(movements: TimelineMovement[]): HTMLElement {
+  const causas = document.createElement('span');
+  causas.className = 'previsao-causas';
+  for (const movement of orderedMovements(movements)) {
+    causas.append(renderMovimento(movement));
+  }
+  return causas;
 }
 
 function collapseRow(item: HTMLElement): void {
@@ -404,7 +425,10 @@ function renderDias(
     saldoEl.classList.toggle('valor-negativo', dia.balance_cents < 0n);
 
     if (!event) {
-      item.append(dataEl, saldoEl);
+      const linha = document.createElement('div');
+      linha.className = 'previsao-dia-linha';
+      linha.append(dataEl, renderCausas(dayMovements), saldoEl);
+      item.append(linha);
       mesEl?.append(item);
       continue;
     }
@@ -413,28 +437,7 @@ function renderDias(
     btn.type = 'button';
     btn.className = 'previsao-dia-btn';
     btn.setAttribute('aria-expanded', 'false');
-
-    btn.append(dataEl);
-
-    for (const movement of orderedMovements(dayMovements)) {
-      const mov = document.createElement('span');
-      mov.className = 'previsao-mov';
-      if (movement.source === 'diario') mov.classList.add('previsao-mov-diario');
-
-      const label = document.createElement('span');
-      label.className = 'previsao-mov-label';
-      label.textContent = movement.label;
-
-      const valor = document.createElement('span');
-      valor.className = 'previsao-mov-valor';
-      valor.textContent =
-        movement.source === 'diario' ? formatAmount(movement.signed_cents) : formatSignedCents(movement.signed_cents);
-
-      mov.append(label, valor);
-      btn.append(mov);
-    }
-
-    btn.append(saldoEl);
+    btn.append(dataEl, renderCausas(dayMovements), saldoEl);
 
     const detalhe = document.createElement('div');
     detalhe.className = 'previsao-detalhe';
@@ -450,8 +453,7 @@ function renderDias(
 
       const valor = document.createElement('span');
       valor.className = 'previsao-detalhe-valor';
-      valor.textContent =
-        movement.source === 'diario' ? formatAmount(movement.signed_cents) : formatSignedCents(movement.signed_cents);
+      valor.textContent = formatSignedAmount(movement.signed_cents);
 
       linha.append(label, valor);
       detalhe.append(linha);
