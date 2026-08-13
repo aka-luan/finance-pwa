@@ -60,3 +60,10 @@ fixos de conta.
   documentar o contrato; a implementação real reusa as queries de
   recorrência dentro da transação do confirm.
 - Backup: nenhuma tabela nova — `recurrence` já está em `BACKUP_TABLES`.
+
+## Atualização
+
+O mapeamento fixo ⇔ `recurrence` de conta permanece. O editor
+contínuo **não** é a tela Recorrências: é o **Planejamento**
+(ADR 0006). Recorrências de cartão continuam fora; o módulo
+`src/ui/recorrencias.ts` não é destino do produto.

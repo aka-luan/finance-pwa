@@ -4,9 +4,9 @@
 
 ## Destination
 
-Produzir uma especificação pronta para implementar um wizard que configure o saldo em conta e derive a estimativa diária de um orçamento mensal de gastos cotidianos, tanto no primeiro uso quanto em uma recalibração pelas Configurações.
+Produzir uma especificação pronta para implementar um wizard que configure o saldo em conta e derive a estimativa diária de um orçamento mensal de gastos cotidianos no primeiro uso. Recalibração contínua ficou no **Planejamento** (ADR 0006), não neste stepper.
 
-**Status:** destino atingido — ver `docs/wayfinder/spec-wizard.md` (#15–#20).
+**Status:** destino atingido — spec em `docs/wayfinder/spec-wizard.md` (#15–#20); wizard de produção em #27; editor contínuo em ADR 0006.
 
 ## Notes
 
@@ -19,16 +19,16 @@ Produzir uma especificação pronta para implementar um wizard que configure o s
 ## Decisions so far
 
 - O wizard é obrigatório quando o banco está vazio; o usuário conclui o planejamento ou restaura um backup.
-- O mesmo fluxo pode ser reaberto em **Configurações → Recalibrar planejamento**.
+- Recalibrar **não** reabre o wizard: é a superfície Planejamento (ADR 0006). Configurações só tem um atalho para ela.
 - O wizard recebe o saldo atual, inclusive negativo.
 - O usuário planeja valores mensais por categorias editáveis. Sugestões iniciais: Mercado, Transporte, Lanches e passeios, Farmácia e saúde, Cuidados pessoais e Pequenos imprevistos.
 - Categorias individuais podem ter valor zero, mas o orçamento mensal total precisa ser maior que zero.
 - A estimativa diária é o orçamento mensal total dividido por 30 dias corridos.
 - A prévia de hoje é a estimativa diária menos os gastos diários já lançados hoje e pode ficar negativa.
 - Apenas gastos cotidianos pagos diretamente pelo saldo em conta, como Pix ou débito, entram no cálculo; compras no cartão ficam fora.
-- A composição por categoria é persistida e reaparece preenchida na recalibração.
-- Com 30 dias de histórico, a recalibração compara planejado e realizado por categoria, mas nunca substitui o planejamento automaticamente.
-- A confirmação grava saldo, fixos (entradas/saídas), composição cotidiana e estimativa juntos.
+- A composição por categoria é persistida e reaparece preenchida no Planejamento.
+- Com 30 dias de histórico, a query de comparação planejado/realizado existe; o Planejamento não a mostra na UI, e nunca substitui o plano automaticamente.
+- No primeiro uso a confirmação grava saldo, fixos, composição cotidiana e estimativa juntos. No Planejamento, autosave grava fixos sempre e composição+estimativa só com total cotidiano > 0 (sem âncora).
 - [Definir a experiência do wizard de planejamento](https://github.com/aka-luan/finance-pwa/issues/15) — Variante A em quatro passos: saldo → fixos (entradas vs saídas) → cotidiano por alto (média do mês = prévia do diário) → resumo. Protótipo em `src/ui/prototype-wizard*` (`/?prototype=wizard&variant=A`).
 - [Fechar as regras de cálculo e comparação do planejamento](https://github.com/aka-luan/finance-pwa/issues/16) — estimativa = `round_half_up(Σ/30)`; janela realizada = 30 dias corridos até hoje; `NULL` → “Sem categoria”; deltas informativos. Ver `docs/wayfinder/resolution-16.md`.
 - [Definir o modelo persistente do orçamento mensal](https://github.com/aka-luan/finance-pwa/issues/17) — composição versionada (`monthly_budget` + lines → `category`); `daily_estimate` permanece a entrada da projeção; mesmo `effective_from` no confirm do wizard. ADR 0002 / `docs/wayfinder/resolution-17.md`.
@@ -58,11 +58,10 @@ Produzir uma especificação pronta para implementar um wizard que configure o s
 
 ## Not yet specified
 
-- Mensagens de erro e estados vazios finos da implementação (o tom e a sequência já estão no #15; critérios de aceitação dos fixos em `resolution-20.md`).
+- Mensagens de erro e estados vazios finos (o tom e a sequência já estão no #15; critérios de aceitação dos fixos em `resolution-20.md`).
 
 ## Out of scope
 
-- Implementar o wizard neste esforço de wayfinding.
 - Calcular um valor diário “seguro” a partir de renda, despesas fixas, faturas futuras ou reserva mínima. (Renda e contas entram como recorrência; não alimentam a média do diário.)
 - Incluir compras no cartão de crédito no orçamento mensal de gastos cotidianos.
 - Substituir automaticamente o planejamento pelos gastos reais.

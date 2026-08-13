@@ -223,7 +223,7 @@ Nada é gravado. A simulação entra na soma acumulada como uma coluna
 própria (`sim_cents`), então dá para mostrar o antes e o depois lado a
 lado.
 
-Em cima disso, duas funções servem a tela inicial direto:
+Em cima disso, duas funções servem o Termômetro direto:
 
 - `milestones(hoje, what_if)` — saldo no fim do mês, +3, +6 e +12 meses
 - `worst_point(hoje, what_if)` — menor saldo da janela de 12 meses e

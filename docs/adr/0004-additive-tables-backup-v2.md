@@ -42,8 +42,8 @@ composição; a recalibração compararia um plano inventado com o realizado.
 
 - DDL das tabelas novas vive em `schema.sql` **e** no snippet aditivo do
   boot até haver um mecanismo melhor; testes têm de cobrir os dois.
-- Restore v1 deixa composição vazia e Hoje utilizável (gate #18 não exige
+- Restore v1 deixa composição vazia e o Termômetro utilizável (gate #18 não exige
   `monthly_budget`).
-- Recalibrar é o momento em que a composição passa a existir nesses bancos.
+- O Planejamento é o momento em que a composição passa a existir nesses bancos.
 - Próxima tabela persistente: mesmo padrão (lista aditiva + bump de backup),
   ou aí sim um runner se o custo da duplicação doer.

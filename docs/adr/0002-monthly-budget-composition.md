@@ -54,6 +54,7 @@ complica backup/consulta. Tabelas relacionais batem com o resto do schema.
 - Explicabilidade histórica do **total diário** permanece em
   `daily_estimate`; a do **plano por categoria**, em `monthly_budget*`.
 - Recalibração lê a composição com maior `effective_from <= hoje`.
+  (Hoje: o Planejamento faz essa leitura.)
 - As tabelas novas entram em `BACKUP_TABLES` com bump de
   `BACKUP_VERSION` e leitura compatível da v1 — detalhe de #19.
 - Detecção de primeiro uso / conclusão atômica (#18) pode tratar
@@ -61,3 +62,8 @@ complica backup/consulta. Tabelas relacionais batem com o resto do schema.
   saldo) gravadas juntas.
 - Schema ainda não aplicado neste ADR: a decisão trava o modelo; a
   migração e o backup são o próximo mapa (#19).
+
+## Atualização
+
+Tabelas aplicadas (ADR 0004). Recalibração contínua é o **Planejamento**
+(`savePlanningAssumptions`), não o wizard de quatro passos — ADR 0006.

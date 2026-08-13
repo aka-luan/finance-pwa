@@ -44,3 +44,11 @@ gravações parciais e deixaria Hoje mentir no meio do fluxo.
 - Implementação do wizard de produção deve respeitar o commit único na
   confirmação, inclusive a reconciliação de fixos (#20 / ADR 0005).
 - Tabelas novas de composição: #19 / ADR 0004.
+
+## Atualização
+
+O gate e o confirm atômico do primeiro uso estão no código
+(`needsFirstRun` / `confirmPlanning`). Recalibrar **não** é
+`Configurações → Recalibrar planejamento`: é a superfície
+Planejamento, via `savePlanningAssumptions`, só com o gate falso
+(ADR 0006). Rascunho em `sessionStorage` não foi implementado.

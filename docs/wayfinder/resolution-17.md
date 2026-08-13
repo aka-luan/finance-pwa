@@ -34,19 +34,25 @@ monthly_budget_line
 
 | Evento | `monthly_budget` (+ lines) | `daily_estimate` |
 |---|---|---|
-| Confirmar wizard (1º uso / recalibrar) | Nova vigência `effective_from = hoje` | Nova vigência `effective_from = hoje`, derivada da soma |
+| Confirmar wizard (1º uso) | Nova vigência `effective_from = hoje` | Nova vigência `effective_from = hoje`, derivada da soma |
+| Planejamento autosave (total cotidiano > 0) | Nova vigência `effective_from = hoje` | Nova vigência `effective_from = hoje`, derivada da soma |
+| Planejamento autosave (total cotidiano = 0) | Inalterado | Inalterado (fixos ainda reconciliam) |
 | Card de desvio → "Atualizar" | Inalterado | Nova vigência só da estimativa |
 | Card de desvio → "Manter" | Inalterado | Inalterado |
 
 Assim:
 
 - o **total diário histórico** continua reproduzível só por `daily_estimate` (timeline não muda de regra);
-- a **composição vigente** na recalibração = `monthly_budget` com maior `effective_from <= hoje`;
+- a **composição vigente** no Planejamento = `monthly_budget` com maior `effective_from <= hoje`;
 - dá para explicar "de onde veio este plano" sem inventar um segundo diário.
 
 Não há FK obrigatória entre as duas tabelas: o card de desvio pode avançar a estimativa sem reescrever o plano por categoria.
 
 ## Recalibração — o que carregar
+
+O **Planejamento** carrega (1) e as recorrências de conta ativas. Não
+mostra (2) nem (3). A query de (3) existe (`spentByCategoryLast30Days`);
+só o modo `recalibrar` do wizard — sem entrada na navegação — a usa.
 
 1. Composição vigente (linhas + nomes via `category`).
 2. Estimativa vigente (já existente).

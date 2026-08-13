@@ -1,12 +1,14 @@
 # Termômetro — especificação
 
 App pessoal de controle financeiro, uso individual, substituindo uma
-planilha em uso há dois anos.
+planilha em uso há dois anos. O produto é uma **previsão de caixa**:
+Planejamento grava as premissas, Previsão mostra o que acontece com o
+dinheiro, Termômetro resume o que dá para gastar hoje.
 
 Artefatos irmãos, já validados e não repetidos aqui:
 `schema.sql` (schema completo), `calculo-saldo-e-faturas.md` (regras de
-cálculo em detalhe), `pglite-smoke-test.mjs` e `pglite-sim-test.mjs`
-(testes executáveis).
+cálculo em detalhe), `docs/adr/` (decisões), os testes `pglite-*.mjs` e
+`previsao-horizon-test.mjs`.
 
 ---
 
@@ -35,12 +37,13 @@ App pessoal, um usuário. Não é produto, não terá múltiplos usuários,
 não terá conta compartilhada.
 
 **Dentro:** entradas, saídas, gasto diário, compras no cartão com
-parcelamento, recorrências, saldo acumulado, projeção de 12 meses,
-simulação, recuperação de dias não lançados.
+parcelamento, entradas/saídas fixas, orçamento mensal de gastos
+cotidianos, saldo acumulado, projeção de 12 meses, simulação,
+recuperação de dias não lançados.
 
 **Fora:** múltiplas contas bancárias, conciliação bancária, importação
-de OFX/extrato, metas de economia, relatórios por categoria,
-compartilhamento, multiusuário.
+de OFX/extrato, metas de economia, relatórios por categoria nos
+lançamentos, compartilhamento, multiusuário.
 
 ---
 
@@ -124,10 +127,10 @@ com simulação em ~20ms.
 banco principal. Todo o cálculo vive em SQL e roda local — leitura sem
 rede, sem estado derivado em JavaScript.
 
-**ElectricSQL** sincronizando com um Postgres no servidor. Como há um
-único usuário, não existe conflito de escrita.
-
-**PWA**, sem app nativo. iPhone.
+**PWA**, sem app nativo. iPhone. ElectricSQL (sync com Postgres no
+servidor) **não está no app**; o schema foi pensado para caber depois,
+sem retrabalho. Enquanto isso, o backup JSON em Configurações é o
+caminho de recuperação (ADR 0001).
 
 Dinheiro é `bigint` em **centavos**. Nunca float, nunca `Decimal`.
 
@@ -141,44 +144,97 @@ Dinheiro é `bigint` em **centavos**. Nunca float, nunca `Decimal`.
 PGlite para devolver `date` como string `YYYY-MM-DD` e tratar como
 texto até a formatação final.
 
-### Sequenciamento
+---
 
-O Electric pode entrar depois do v1 — o schema é o mesmo dos dois
-lados, então adiar não gera retrabalho. Se adiar, um endpoint de
-backup (dump periódico para o servidor) é **obrigatório** desde o
-início: o navegador pode limpar o IndexedDB sob pressão de espaço e
-levar anos de histórico junto.
+## 6. Superfícies
+
+Três telas informacionais da mesma previsão, mais uma ação (ADR 0006).
+Código: `src/ui/destinations.ts`. Navegação: Termômetro é a casa
+(`reset`); Previsão e Planejamento saem dele com `push` e trocam entre
+si com `replace`, para não empilhar. Lançar não entra nesse navigator.
+
+| Superfície | Pergunta | Código |
+|---|---|---|
+| **Termômetro** | Quanto posso gastar hoje? | `renderHoje` |
+| **Previsão** | O que vai acontecer com meu dinheiro? | `renderPrevisao` |
+| **Planejamento** | De onde vem essa previsão? | `renderPlanejamento` |
+| **Lançar** | O que aconteceu hoje? | `renderLancar` (FAB, não destino) |
+
+Configurações (cartões, atalho ao Planejamento, rever estimativa,
+backup) fica atrás de um link discreto no Termômetro — não é uma
+quarta leitura do mesmo dinheiro. Recorrências de conta **não** são
+destino: o módulo `src/ui/recorrencias.ts` existe, mas a navegação
+atual não o abre.
+
+### Termômetro (casa)
+
+Fatia acionável da mesma timeline que a Previsão mostra por completo.
+`balance_on` / `milestones` / `worst_point` — o mesmo motor.
+
+**Topo:** wordmark "Termômetro" e a data. **Hero:** quanto posso gastar
+hoje (`daily_estimate` vigente − diários já lançados hoje). Pode ficar
+negativo. Sem estimativa, o hero diz isso em texto — nunca finge
+`R$ 0,00`.
+
+Abaixo, o **resumo da previsão** e o simulador, nesta ordem: o valor
+digitado é a pergunta, as linhas são a resposta.
+
+- **saldo atual**, depois marcos (fim deste mês, 3, 6, 12 meses) e
+  **menor saldo** com o dia. Label à esquerda, valor à direita.
+- **"e se eu gastar":** teclado nativo, centavos, debounce 150ms.
+  Atualiza as métricas ao vivo com delta em âmbar. Nada é gravado;
+  sair da tela descarta. Atalhos de R$ 200, 500 e 1.200, mais limpar.
+
+**Aviso de dias pendentes:** discreto, tocável, leva ao modo de
+recuperação. Sem contador de ofensiva, sem vermelho de cobrança.
+"Acertar saldo" fica ao lado do aviso, visível — não escondido em
+Configurações.
+
+**Aviso de desvio da estimativa** (§9) entra nesta tela, na abertura.
+
+### Previsão
+
+Ledger da `timeline` de 12 meses (`getTimeline` +
+`getTimelineMovements`). Sem simulação.
+
+**Horizonte** no topo: saldo no fim de cada mês civil, com recorte de
+3, 6 ou 12 meses (`HORIZON_RANGES`). Um fetch de `timeline()` alimenta
+as duas camadas. Resumo: saldo atual e menor saldo da janela visível.
+
+Abaixo, **dia a dia**: saldo de cada dia; dias com movimento que não é
+só o diário projetado expandem e nomeiam a causa (lançado vs
+projeção). Hoje e o dia do menor saldo levam marca.
+
+### Planejamento
+
+Editor operacional das premissas que a previsão lê. Autosave com
+debounce 150ms via `savePlanningAssumptions` — **não** grava
+`account_anchor` (isso é o wizard de primeiro uso e o Acertar saldo).
+
+Três blocos: **entradas fixas**, **contas fixas**, **gastos mensais**
+(orçamento por categoria). Fixos sempre reconciliam `recurrence` de
+conta (ADR 0005). Composição + `daily_estimate` só gravam quando o
+total cotidiano é > 0; total zero deixa a estimativa vigente em paz,
+assim dá para editar fixos sem apagar o hero do Termômetro.
+
+A estimativa diária mostrada no rodapé é `round_half_up(Σ / 30)`. Não
+há "restam N dias" — o divisor é sempre 30.
+
+### Primeiro uso
+
+Com `needsFirstRun` (falta `account_anchor` **ou** `daily_estimate`),
+o boot **não** entra no Termômetro: abre o wizard em quatro passos
+(Saldo → Fixos → Cotidiano → Resumo). Confirm atômico:
+`confirmPlanning` (ADR 0003 + 0005). Restore de backup no passo Saldo
+reaplica o mesmo gate. Não há rascunho no Postgres nem em
+`sessionStorage`.
+
+O modo `recalibrar` do wizard ainda existe no código; a navegação do
+produto não o abre. Recalibrar **é** o Planejamento.
 
 ---
 
-## 6. Tela 1 — Hoje
-
-Responde duas perguntas e oferece uma ferramenta.
-
-**Topo:** quanto posso gastar hoje, em destaque. Abaixo, menor, o saldo
-em conta. A hierarquia é deliberada: o saldo o usuário consulta no
-banco; o outro número, não.
-
-**Marcos:** fim deste mês, 3 meses, 6 meses, 12 meses, cada um com o
-saldo projetado. É o "olhar o todo" da planilha condensado.
-
-**Pior momento:** menor saldo da janela de 12 meses e em que dia
-ocorre. Responde "eu furo em algum ponto?", que hoje exige varrer
-colunas.
-
-**Campo "e se eu gastar ___":** o coração da tela. Digitar um valor
-atualiza marcos e pior momento ao vivo, mostrando o delta. Nada é
-gravado; sair da tela descarta. Debounce de ~150ms, pela latência
-medida.
-
-**Aviso de dias pendentes:** discreto, tocável, leva ao modo de
-recuperação. Sem contador de ofensiva, sem vermelho de cobrança — se o
-app fizer o usuário se sentir devedor, ele para de abrir.
-
-**Acesso secundário:** a linha do tempo completa dos 12 meses, dia a
-dia, fora da tela principal.
-
-## 7. Tela 2 — Lançar
+## 7. Lançar
 
 Abre com o campo de valor focado e o numpad já visível.
 
@@ -197,20 +253,23 @@ entrada em centavos, sem vírgula. Abaixo dele, o botão de largura
 total *+ Adicionar R$ …* põe o valor digitado na lista — o total acima
 é só o que já entrou. *Salvar* ainda grava um valor digitado que não
 foi adicionado, para o caminho rápido de um lançamento só. O teclado
-próprio evita o do sistema empurrar o layout no iOS e serve as duas
-telas. Input `readonly` para suprimir o teclado nativo.
+próprio evita o do sistema empurrar o layout no iOS (Lançar, Acertar
+saldo). Input `readonly` para suprimir o teclado nativo.
 
 **Tipo:** `Diário` pré-selecionado — é a maioria dos lançamentos.
 `Saída`, `Entrada`, `Cartão` a um toque. Uma linha sob as pills diz o
 que cada tipo é (gasto cotidiano, despesa estrutural, dinheiro na
 conta, compra no crédito).
 
-**Categoria:** opcional, por item, atrás de um link discreto.
+**Categoria:** o schema aceita `category_id` em `transaction`; Lançar
+**não** pede nem grava. Categoria é vocabulário do orçamento mensal
+(Planejamento / wizard), não do lançamento.
 
 **Rodapé:** *Salvar* em largura total. *Não gastei nada* fica abaixo,
-terciário, e só aparece com a lista vazia — não compete com gravar.
-Ambos avançam direto para o próximo dia pendente sem voltar à tela
-inicial; quando acabam, retorna a Hoje com o saldo atualizado.
+terciário, e só aparece com a lista **e** o buffer vazios — não
+compete com gravar nem descarta o que já se digitou. Ambos avançam
+direto para o próximo dia pendente sem voltar ao Termômetro; quando
+acabam, voltam para lá com o saldo atualizado.
 
 **Modo cartão:** ao escolher `Cartão`, a data dá lugar a cartão +
 parcelas, e a tela informa o efeito — "3x de R$ 333,34 — primeira vence
@@ -248,39 +307,42 @@ existe um anchor recente afirmando o valor.
 
 ## 9. Estimativa diária
 
-`daily_estimate` nasce da média de 30 dias de gasto cotidiano. Só
-recalcula quando o usuário mandar.
+`daily_estimate` é a **única** entrada da projeção de gasto cotidiano.
+Nasce do orçamento mensal: `round_half_up(Σ linhas / 30)` (ADR 0002,
+#16). Quem grava:
 
-Para que não envelheça em silêncio, na abertura do app compara-se o
-último mês fechado com a estimativa vigente naquele mês. Desvio acima
-de ~15% mostra um card: "Em julho você gastou 78/dia, sua estimativa é
-62,90. Atualizar?". Um toque grava nova estimativa com `effective_from`
-= hoje, sem retroagir. "Manter" registra a dispensa do mês.
+- wizard de primeiro uso (`confirmPlanning`, mesmo `effective_from`
+  da composição);
+- Planejamento (`savePlanningAssumptions`, só se o total cotidiano
+  for > 0);
+- card de desvio → "Atualizar" (só a estimativa; a composição fica).
 
-Configurações têm um botão para limpar dispensas e rever a comparação.
+Não é média dos diários lançados. A comparação com o realizado é
+informativa, no card abaixo.
+
+Na abertura do Termômetro compara-se o último mês fechado com a
+estimativa vigente naquele mês. Desvio acima de ~15% mostra um card:
+"Em julho você gastou 78/dia, sua estimativa é 62,90. Atualizar?". Um
+toque grava nova estimativa com `effective_from` = hoje, sem retroagir,
+e dispensa o mês para o card não voltar. "Manter" só registra a
+dispensa.
+
+Configurações → *Rever estimativa* limpa as dispensas e volta ao
+Termômetro, onde a comparação roda de novo.
 
 ---
 
-## 10. Primeira fatia vertical
+## 10. O que já está no app
 
-Ordem sugerida — cada item entrega algo utilizável:
-
-1. PGlite no PWA, schema aplicado no boot, persistência em IndexedDB
-2. Numpad + tela de lançamento de Diário
-3. Tela Hoje: saldo e quanto posso gastar
-4. Backup/exportação (sem ela, limpar o navegador apaga tudo)
-5. Dias pendentes e modo de recuperação
-6. Recorrências e "Acertar saldo"
-7. Marcos e simulação
-8. Cartões, compras e parcelamento
-9. Aviso de desvio da estimativa
-10. Linha do tempo completa de 12 meses
-
-O item 8 é o de maior valor sobre a planilha, mas depende de haver
-hábito de uso estabelecido — vem depois do laço básico funcionar.
+O laço básico (PGlite, Lançar, Termômetro, backup, pendentes, fixos,
+marcos, cartão, desvio, Previsão, Planejamento, wizard de primeiro
+uso) já está entregue. A fatia de maior valor sobre a planilha — ver
+o comprometimento futuro das compras parceladas — vive na Previsão.
 
 ## 11. Em aberto
 
-- Backup: formato do dump e gatilho (periódico, manual, ao fechar).
-- Se um cenário simulado pode ser salvo em vez de descartado.
-- Categorias: lista fixa ou livre, e se herdam do último uso.
+- Backup automático / lembrete de exportar (o dump manual em JSON
+  está em Configurações; ADR 0001).
+- Se um cenário simulado pode ser salvo em vez de descartado
+  (`timeline_sim` continua efêmero).
+- Categoria em cada lançamento (schema permite; Lançar não grava).
