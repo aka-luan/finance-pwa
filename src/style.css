@@ -1,6 +1,10 @@
 /* Tokens do design handoff (docs/design-handoff/README.md). Tema escuro
    único: o app é para consulta rápida, muitas vezes de noite, e um segundo
-   tema seria uma segunda superfície para manter em dia sem ninguém pedir. */
+   tema seria uma segunda superfície para manter em dia sem ninguém pedir.
+
+   Vocabulário único — margem, rótulo de seção, divisor, muted, número,
+   raio, estados e ações. Telas não inventam um quarto cinza nem um
+   radius de 9px; usam o que está aqui. */
 :root {
   --bg: #0d0f10;
 
@@ -10,23 +14,34 @@
   --surface-pill: #171b1d;
   --surface-key: #191d1f;
   --surface-aviso: #101618;
-
-  --border: #1e2325;
-  --border-key: #23282b;
-  --border-control: #262c2f;
-  --border-aviso: #23303a;
+  --surface-pressed: #1c2224;
 
   --fg: #e6e9ea;
   --fg-hero: #f2f5f6;
   --fg-item: #dfe4e6;
   --fg-saldo: #b9c2c6;
-  --fg-secundario: #8d979c;
-  --fg-secundario-claro: #a8b2b7;
-  --fg-terciario: #7f888d;
-  --fg-muted: #6e777c;
-  --fg-fraco: #5a6266;
+
+  /* Um muted só, ~6.5:1 em --bg: informação secundária continua
+     secundária, mas não se confunde com desabilitado. Os aliases abaixo
+     existem para o CSS antigo cair no mesmo contraste sem um zoo de
+     cinzas (#5a6266 era ~3.1:1 — contraste de controle inativo). */
+  --fg-muted: #8d979c;
+  --fg-secundario: var(--fg-muted);
+  --fg-secundario-claro: var(--fg-muted);
+  --fg-terciario: var(--fg-muted);
+  --fg-fraco: var(--fg-muted);
+
+  --fg-disabled: #5e686c;
+  --fg-placeholder: #6e787d;
   --fg-sobre-claro: #4a5153;
-  --fg-placeholder: #4d565c;
+
+  /* Divisores: a mesma opacidade do fg sobre o fundo, não hexes vizinhos
+     (#1e2325, #20262a, #23282b) que oscilavam de tela para tela. */
+  --divider: color-mix(in srgb, var(--fg) 9%, var(--bg));
+  --border: var(--divider);
+  --border-key: color-mix(in srgb, var(--fg) 12%, var(--bg));
+  --border-control: color-mix(in srgb, var(--fg) 14%, var(--bg));
+  --border-aviso: #23303a;
 
   /* Âmbar = "isto ainda não aconteceu": a simulação da Tela Hoje e as
      parcelas futuras de uma compra. Não usar para mais nada, senão para de
@@ -35,19 +50,39 @@
   --ambar-bg: #2a2418;
   --ambar-border: #5c4a26;
 
-  /* Vermelho dessaturado para saldo negativo — informação, não alarme. */
+  /* Vermelho dessaturado para saldo negativo e para ação destrutiva —
+     informação, não alarme. */
   --negativo: #d99a8c;
 
   --acao: #2f6d7e;
   --acao-fg: #f2f8fa;
   --acao-border: #46707f;
-  --acao-texto: #6e8891;
-  --acao-texto-claro: #9fb2ba;
+  --acao-texto: #8aa4ad;
+  --acao-texto-claro: var(--acao-texto);
 
   --inverso-bg: #e9edee;
   --inverso-fg: #0d0f10;
 
+  /* Escala de 4px. --lado é a margem horizontal de toda tela. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
   --lado: 22px;
+
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-pill: 999px;
+
+  --label-size: 11px;
+  --label-tracking: 0.08em;
+
+  --disabled-opacity: 0.45;
+  --inactive-opacity: 0.55;
 
   --sans: 'IBM Plex Sans', system-ui, sans-serif;
   --mono: 'IBM Plex Mono', ui-monospace, monospace;
@@ -100,19 +135,78 @@ body {
   color: var(--fg);
 }
 
+:focus-visible {
+  outline: 1px solid var(--acao-border);
+  outline-offset: 2px;
+}
+
 /* Todo valor em dígitos usa a mono com tabular-nums: é o que mantém as
    colunas de marcos e a lista de lançamentos alinhadas dígito a dígito. */
+.num,
 .hoje-hero-numero,
+.hoje-hero-moeda,
+.hoje-data,
 .saldo-valor,
 .marco-valor,
 .marco-delta,
+.marco-data,
 .pior-valor,
+.pior-era,
 .simular-input,
+.simular-moeda,
+.simular-chip,
+.item-numero,
 .item-valor,
 .lancar-total-valor,
-.numpad-adicionar-buffer {
+.lancar-posicao,
+.lancar-consequencia,
+.pendentes-intervalo,
+.numpad-key,
+.numpad-adicionar-buffer,
+.valor-input,
+.cartao-picker-valor,
+.cartao-picker-parcelas,
+.wizard-money input,
+.wizard-money span,
+.wizard-running,
+.wizard-actual,
+.wizard-summary-row span:last-child,
+.wizard-day-btn,
+.wizard-day-sheet-grid button,
+.wizard-fixed-card .wizard-money input,
+.recorrencia-detalhe,
+.recorrencia-dia-input,
+.linha-tempo-saldo,
+.linha-tempo-data {
   font-family: var(--mono);
   font-variant-numeric: tabular-nums;
+}
+
+/* Rótulo de seção: mono, 11px, uppercase, tracking fixo, muted legível.
+   Progresso do wizard, mês da linha do tempo, "TOTAL", "Dia do mês" —
+   o mesmo objeto tipográfico, não cinco variações. */
+.secao-label,
+.config-secao,
+.wizard-section,
+.wizard-day-sheet-title,
+.wizard-progress,
+.linha-tempo-mes,
+.lancar-data-label,
+.lancar-total-label,
+.recorrencia-dia-label,
+.cartao-picker-label {
+  font-family: var(--mono);
+  font-size: var(--label-size);
+  font-weight: 400;
+  letter-spacing: var(--label-tracking);
+  text-transform: uppercase;
+  color: var(--fg-muted);
+  margin: 0;
+}
+
+.recorrencia-dia-label input {
+  text-transform: none;
+  letter-spacing: 0;
 }
 
 /* Saldo negativo, em qualquer lugar da interface. */
@@ -129,7 +223,7 @@ body {
 /* Safe-area no topo: em aparelhos com notch o recorte é maior que o
    padding base, daí o max() em vez de somar. */
 .screen {
-  padding: max(24px, env(safe-area-inset-top)) var(--lado) max(24px, env(safe-area-inset-bottom));
+  padding: max(var(--space-5), env(safe-area-inset-top)) var(--lado) max(var(--space-5), env(safe-area-inset-bottom));
   flex: 1;
 }
 
@@ -152,21 +246,20 @@ body {
 
 .hoje-wordmark {
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: var(--label-size);
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--fg-muted);
 }
 
 .hoje-data {
-  font-family: var(--mono);
-  font-size: 11px;
+  font-size: var(--label-size);
   letter-spacing: 0.06em;
   color: var(--fg-muted);
 }
 
 .hoje-hero {
-  margin-bottom: 16px;
+  margin-bottom: var(--space-4);
 }
 
 .hoje-hero-label {
@@ -179,11 +272,10 @@ body {
 .hoje-hero-valor {
   display: flex;
   align-items: baseline;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .hoje-hero-moeda {
-  font-family: var(--mono);
   font-size: 19px;
   font-weight: 500;
   color: var(--fg-muted);
@@ -215,14 +307,14 @@ body {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  padding: 8px 0;
-  border-top: 1px solid var(--border);
+  padding: var(--space-2) 0;
+  border-top: 1px solid var(--divider);
   margin-bottom: 18px;
 }
 
 .saldo-label {
   font-size: 12px;
-  color: var(--fg-terciario);
+  color: var(--fg-muted);
 }
 
 .saldo-valor {
@@ -237,7 +329,7 @@ body {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 10px;
-  margin-bottom: 12px;
+  margin-bottom: var(--space-3);
 }
 
 .marco {
@@ -252,7 +344,7 @@ body {
 .marco-label {
   font-size: 10.5px;
   line-height: 1.2;
-  color: var(--fg-fraco);
+  color: var(--fg-muted);
   letter-spacing: 0.01em;
   height: 25px;
 }
@@ -272,7 +364,6 @@ body {
 }
 
 .marco-data {
-  font-family: var(--mono);
   font-size: 10.5px;
   color: var(--fg-muted);
   letter-spacing: 0.04em;
@@ -310,9 +401,9 @@ body {
   align-items: baseline;
   gap: 6px;
   flex-wrap: wrap;
-  padding-top: 12px;
-  border-top: 1px solid var(--border);
-  margin-bottom: 16px;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--divider);
+  margin-bottom: var(--space-4);
 }
 
 .pior-label,
@@ -327,7 +418,6 @@ body {
 }
 
 .pior-era {
-  font-family: var(--mono);
   font-size: 12px;
   color: var(--ambar);
 }
@@ -336,9 +426,9 @@ body {
    único sinal de que os marcos acima já não são o saldo real (SPEC.md §6). */
 .simular {
   background: var(--surface-card);
-  border: 1px solid #20262a;
-  border-radius: 12px;
-  padding: 13px 14px 12px;
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3);
   margin-bottom: 14px;
 }
 
@@ -350,7 +440,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .simular-label {
@@ -374,7 +464,6 @@ body {
 }
 
 .simular-moeda {
-  font-family: var(--mono);
   font-size: 14px;
   color: var(--fg-muted);
 }
@@ -406,7 +495,7 @@ body {
 
 .simular-chips {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
   margin-top: 10px;
 }
 
@@ -414,16 +503,20 @@ body {
   flex: 1;
   background: var(--surface-card);
   border: 1px solid var(--border-control);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   padding: 6px 0;
-  font-family: var(--mono);
   font-size: 12px;
-  color: var(--fg-secundario);
+  color: var(--fg-muted);
 }
 
 .simular-chip.chip-ativo {
   background: var(--ambar-bg);
   color: var(--ambar);
+  border-color: var(--ambar-border);
+}
+
+.simular-chip:active {
+  background: var(--surface-pressed);
 }
 
 /* Aviso de dias pendentes: discreto de propósito. Nada de vermelho, nada
@@ -445,18 +538,17 @@ body {
   background: var(--surface-aviso);
   border: 1px solid var(--border-aviso);
   border-left: 2px solid var(--acao-border);
-  border-radius: 10px;
-  padding: 13px 14px;
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
   text-align: left;
 }
 
 .pendentes-texto {
   font-size: 13.5px;
-  color: var(--acao-texto-claro);
+  color: var(--acao-texto);
 }
 
 .pendentes-intervalo {
-  font-family: var(--mono);
   font-size: 12px;
   color: var(--acao-texto);
 }
@@ -466,9 +558,14 @@ body {
   border: none;
   color: var(--acao-texto);
   font-size: 12.5px;
-  padding: 4px 0;
+  padding: var(--space-1) 0;
   text-decoration: underline;
   text-underline-offset: 0.3em;
+}
+
+.pendentes-aviso:active,
+.pendentes-acertar:active {
+  filter: brightness(1.08);
 }
 
 /* Acessos secundários (linha do tempo, configurações): empurrados para o
@@ -476,46 +573,47 @@ body {
    o FAB, que é fixo. */
 .hoje-secundario {
   margin-top: auto;
-  padding-top: 16px;
+  padding-top: var(--space-4);
   padding-right: 130px;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .btn-config {
   background: none;
   border: none;
-  color: var(--fg-secundario);
+  color: var(--fg-muted);
   font-size: 13px;
-  padding: 8px 12px;
-  margin-left: -12px;
+  padding: var(--space-2) var(--space-3);
+  margin-left: calc(-1 * var(--space-3));
   min-height: 40px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   text-align: left;
   text-decoration: none;
 }
 
-.btn-config:hover,
 .btn-config:active {
-  background: var(--surface-pill);
-  color: var(--fg-secundario-claro);
+  background: var(--surface-pressed);
+  color: var(--fg);
 }
 
-.btn-config:focus-visible {
-  outline: 1px solid var(--border-control);
-  outline-offset: 0;
+@media (hover: hover) {
+  .btn-config:hover {
+    background: var(--surface-pill);
+    color: var(--fg);
+  }
 }
 
 /* FAB "Lançar": fixo no canto inferior direito, na zona do polegar. */
 .btn-lancar {
   position: fixed;
   right: var(--lado);
-  bottom: max(24px, calc(env(safe-area-inset-bottom) + 22px));
+  bottom: max(var(--space-5), calc(env(safe-area-inset-bottom) + 22px));
   height: 60px;
   padding: 0 26px;
-  border-radius: 30px;
+  border-radius: var(--radius-pill);
   background: var(--inverso-bg);
   border: none;
   color: var(--inverso-fg);
@@ -524,39 +622,43 @@ body {
   box-shadow: 0 10px 30px rgb(0 0 0 / 55%);
 }
 
+.btn-lancar:active {
+  filter: brightness(0.92);
+}
+
 /* Aviso de desvio da estimativa (SPEC.md §9): mesma linguagem visual do
    card de confirmação de restauração em Configurações (borda sutil, sem
    vermelho) — é uma pergunta, não uma cobrança. */
 .estimativa-aviso:not(:empty) {
   background: var(--surface-card);
   border: 1px solid var(--border-control);
-  border-radius: 12px;
-  padding: 14px;
-  margin-bottom: 16px;
+  border-radius: var(--radius-lg);
+  padding: var(--space-3);
+  margin-bottom: var(--space-4);
 }
 
 .estimativa-aviso p {
-  margin: 0 0 12px;
+  margin: 0 0 var(--space-3);
   font-size: 13.5px;
   line-height: 1.4;
-  color: var(--fg-secundario-claro);
+  color: var(--fg-muted);
 }
 
 .toast {
   position: fixed;
   left: var(--lado);
   right: var(--lado);
-  bottom: max(24px, calc(env(safe-area-inset-bottom) + 22px));
+  bottom: max(var(--space-5), calc(env(safe-area-inset-bottom) + 22px));
   background: var(--surface-pill);
   border: 1px solid var(--border-control);
-  border-radius: 12px;
-  padding: 12px 14px;
+  border-radius: var(--radius-lg);
+  padding: var(--space-3);
   font-size: 13.5px;
-  color: var(--fg-secundario-claro);
+  color: var(--fg-muted);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: var(--space-4);
 }
 
 /* Em Hoje o toast dividiria a faixa de baixo com o FAB, que é fixo na
@@ -592,13 +694,12 @@ body {
 }
 
 .lancar-posicao {
-  font-family: var(--mono);
-  font-size: 11px;
+  font-size: var(--label-size);
   letter-spacing: 0.1em;
   color: var(--fg-muted);
   background: var(--surface-pill);
-  border-radius: 6px;
-  padding: 4px 9px;
+  border-radius: var(--radius-xs);
+  padding: var(--space-1) 9px;
 }
 
 /* Altura reservada: Diário mostra data, Cartão mostra dois seletores, e
@@ -609,11 +710,6 @@ body {
 }
 
 .lancar-data-label {
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--fg-terciario);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
   margin-bottom: 5px;
 }
 
@@ -651,8 +747,12 @@ body {
   text-align: left;
   background: var(--surface-card);
   border: 1px solid var(--border-control);
-  border-radius: 10px;
-  padding: 9px 12px;
+  border-radius: var(--radius-md);
+  padding: 9px var(--space-3);
+}
+
+.cartao-picker:active {
+  background: var(--surface-pressed);
 }
 
 /* O nome do cartão é mais longo que "3x", então leva a fração maior. */
@@ -661,8 +761,6 @@ body {
 }
 
 .cartao-picker-label {
-  font-size: 10.5px;
-  color: var(--fg-terciario);
   margin-bottom: 3px;
 }
 
@@ -672,12 +770,8 @@ body {
   color: var(--fg);
 }
 
-.cartao-picker-parcelas {
-  font-family: var(--mono);
-}
-
 .lancar-divisor {
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--divider);
   margin-bottom: 10px;
 }
 
@@ -715,9 +809,8 @@ body {
 }
 
 .item-numero {
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--fg-fraco);
+  font-size: var(--label-size);
+  color: var(--fg-muted);
   width: 22px;
 }
 
@@ -733,18 +826,22 @@ body {
   margin-left: 14px;
   width: 26px;
   height: 26px;
-  border-radius: 13px;
+  border-radius: var(--radius-pill);
   background: var(--surface-pill);
   border: 1px solid var(--border-control);
-  color: var(--fg-secundario);
+  color: var(--negativo);
   font-size: 13px;
   line-height: 1;
   padding: 0;
 }
 
+.item-remover:active {
+  background: var(--surface-pressed);
+}
+
 .lancar-vazio {
   font-size: 13px;
-  color: var(--fg-fraco);
+  color: var(--fg-muted);
   padding: 6px 0;
   margin: 0;
 }
@@ -754,16 +851,8 @@ body {
   align-items: baseline;
   justify-content: space-between;
   padding: 10px 0;
-  border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-}
-
-.lancar-total-label {
-  font-family: var(--mono);
-  font-size: 12px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--fg-terciario);
+  border-top: 1px solid var(--divider);
+  border-bottom: 1px solid var(--divider);
 }
 
 .lancar-total-valor {
@@ -778,7 +867,6 @@ body {
   min-height: 20px;
   padding-top: 6px;
   margin: 0;
-  font-family: var(--mono);
   font-size: 12px;
   color: var(--ambar);
 }
@@ -786,17 +874,17 @@ body {
 .kind-toggle {
   display: flex;
   gap: 6px;
-  margin: 12px 0 8px;
+  margin: var(--space-3) 0 var(--space-2);
 }
 
 .kind-toggle button {
   flex: 1;
   background: var(--surface-card);
   border: 1px solid var(--border-control);
-  border-radius: 9px;
+  border-radius: var(--radius-md);
   padding: 9px 0;
   font-size: 13px;
-  color: var(--fg-secundario);
+  color: var(--fg-muted);
 }
 
 .kind-toggle button.kind-ativo {
@@ -804,6 +892,10 @@ body {
   border-color: var(--inverso-bg);
   color: var(--inverso-fg);
   font-weight: 600;
+}
+
+.kind-toggle button:active:not(.kind-ativo) {
+  background: var(--surface-pressed);
 }
 
 /* Numpad próprio (SPEC.md §7). Três colunas de teclas; a quarta, quando a
@@ -833,11 +925,14 @@ body {
 .numpad-key {
   background: var(--surface-key);
   border: 1px solid var(--border-key);
-  border-radius: 10px;
-  font-family: var(--mono);
+  border-radius: var(--radius-md);
   font-size: 21px;
   font-weight: 500;
   color: var(--fg);
+}
+
+.numpad-key:active {
+  background: var(--surface-pressed);
 }
 
 .numpad-adicionar {
@@ -845,7 +940,7 @@ body {
   grid-row: 1 / span 4;
   background: var(--inverso-bg);
   border: none;
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   color: var(--inverso-fg);
   font-size: 15px;
   font-weight: 600;
@@ -854,6 +949,10 @@ body {
   align-items: center;
   justify-content: center;
   gap: 6px;
+}
+
+.numpad-adicionar:active {
+  filter: brightness(0.92);
 }
 
 .numpad-adicionar-glifo {
@@ -887,7 +986,7 @@ body {
 .tela-footer {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-3);
   margin-top: auto;
   padding-top: 6px;
 }
@@ -896,23 +995,39 @@ body {
 .config-acoes button {
   flex: 1;
   height: 52px;
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   font-size: 15px;
   font-weight: 600;
 }
 
 .btn-secundario,
-.btn-cancelar {
+.btn-cancelar,
+.btn-bloco,
+.btn-restaurar {
   background: var(--surface-card);
   border: 1px solid var(--border-control);
-  color: var(--fg-secundario-claro);
+  color: var(--fg-muted);
 }
 
 .btn-salvar,
-.btn-confirmar {
+.btn-confirmar,
+.btn-exportar {
   background: var(--acao);
   border: none;
   color: var(--acao-fg);
+}
+
+.btn-secundario:active:not(:disabled),
+.btn-cancelar:active:not(:disabled),
+.btn-bloco:active:not(:disabled),
+.btn-restaurar:active:not(:disabled) {
+  background: var(--surface-pressed);
+}
+
+.btn-salvar:active:not(:disabled),
+.btn-confirmar:active:not(:disabled),
+.btn-exportar:active:not(:disabled) {
+  filter: brightness(1.08);
 }
 
 /* Em Lançar, "Não gastei nada" é texto puro ao lado de um Salvar largo:
@@ -922,31 +1037,61 @@ body {
   background: none;
   border: none;
   padding: 0 14px;
-  color: var(--fg-secundario);
+  color: var(--fg-muted);
   font-size: 13.5px;
   font-weight: 400;
 }
 
-.tela-footer button:disabled,
-.config-acoes button:disabled {
-  opacity: 0.6;
+.screen-lancar .btn-secundario:active:not(:disabled) {
+  background: none;
+  color: var(--fg);
 }
 
-/* Telas secundárias — Acertar saldo, Configurações, Recorrências, Linha do
-   tempo. Recolorização apenas: o layout atual continua, com a paleta e as
-   fontes novas. O desenho real delas vem de outra rodada
+.btn-destrutivo,
+.recorrencia-desativar {
+  background: none;
+  border: none;
+  color: var(--negativo);
+  font-size: 12.5px;
+  text-decoration: underline;
+  text-underline-offset: 0.3em;
+  padding: var(--space-2) 0;
+}
+
+.btn-destrutivo:active:not(:disabled),
+.recorrencia-desativar:active:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+.tela-footer button:disabled,
+.config-acoes button:disabled,
+.btn-exportar:disabled,
+.btn-salvar:disabled,
+.btn-confirmar:disabled,
+.btn-secundario:disabled,
+.btn-cancelar:disabled,
+.btn-bloco:disabled,
+.btn-destrutivo:disabled {
+  opacity: var(--disabled-opacity);
+}
+
+/* Telas secundárias — Acertar saldo, Configurações, Recorrências, Cartões,
+   Linha do tempo. Recolorização apenas: o layout atual continua, com a
+   paleta e as fontes novas. O desenho real delas vem de outra rodada
    (docs/design-handoff/design-request-secondary-elements.md). */
 
 .screen-config,
 .screen-acertar,
 .screen-recorrencias,
 .screen-recorrencia-form,
+.screen-cartoes,
+.screen-cartao-form,
 .screen-linha-tempo,
 .screen-wizard,
 .screen-boot {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 /* Pin progress/title/footer; only the step body scrolls. Compact rows
@@ -960,11 +1105,6 @@ body {
 }
 
 .wizard-progress {
-  font-size: 0.8rem;
-  color: var(--fg-terciario);
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  margin: 0;
   flex-shrink: 0;
 }
 
@@ -1004,20 +1144,11 @@ body {
   padding-top: 8px;
 }
 
-.wizard-section {
-  margin: 0;
-  font-size: 12px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  font-family: var(--mono);
-  color: var(--fg-secundario);
-}
-
 .wizard-list,
 .wizard-fixed {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .wizard-fixed {
@@ -1036,7 +1167,7 @@ body {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 /* Cotidiano: name + amount share a row when there's room; they wrap
@@ -1045,26 +1176,26 @@ body {
   flex: 1 1 8rem;
   min-width: 0;
   background: var(--surface-pill);
-  border: 1px solid var(--border);
-  border-radius: 10px;
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-md);
   color: var(--fg);
-  padding: 8px 10px;
+  padding: var(--space-2) 10px;
   min-height: 44px;
 }
 
 .wizard-money {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   background: var(--surface-pill);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 8px 10px;
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) 10px;
   min-height: 44px;
 }
 
 .wizard-body > .wizard-money {
-  padding: 12px 14px;
+  padding: var(--space-3);
 }
 
 .wizard-row .wizard-money {
@@ -1086,7 +1217,6 @@ body {
   border: 0;
   background: transparent;
   color: var(--fg);
-  font-variant-numeric: tabular-nums;
   outline: none;
 }
 
@@ -1101,9 +1231,9 @@ body {
   column-gap: 4px;
   row-gap: 0;
   background: var(--surface-card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 0 2px 2px 12px;
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-lg);
+  padding: 0 2px 2px var(--space-3);
 }
 
 .wizard-fixed-card .wizard-name {
@@ -1134,10 +1264,8 @@ body {
 }
 
 .wizard-fixed-card .wizard-money input {
-  font-family: var(--mono);
   font-size: 1.2rem;
   font-weight: 500;
-  font-variant-numeric: tabular-nums;
   color: var(--fg-hero);
 }
 
@@ -1155,14 +1283,16 @@ body {
   padding: 0 10px;
   min-height: 36px;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: var(--surface-pill);
-  color: var(--fg-secundario-claro);
-  font: inherit;
+  color: var(--fg-muted);
   font-size: 0.85rem;
   font-weight: 500;
   white-space: nowrap;
-  cursor: pointer;
+}
+
+.wizard-day-btn:active {
+  background: var(--surface-pressed);
 }
 
 .wizard-more-wrap {
@@ -1179,7 +1309,10 @@ body {
   letter-spacing: 0.08em;
   font-size: 16px;
   line-height: 1;
-  cursor: pointer;
+}
+
+.wizard-more:active {
+  color: var(--fg);
 }
 
 .wizard-more-menu {
@@ -1188,24 +1321,34 @@ body {
   top: calc(100% - 4px);
   z-index: 3;
   min-width: 9rem;
-  padding: 4px;
+  padding: var(--space-1);
   background: var(--surface-card);
   border: 1px solid var(--border-control);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   box-shadow: 0 8px 24px rgb(0 0 0 / 45%);
 }
 
 .wizard-more-menu button {
   width: 100%;
   min-height: 44px;
-  padding: 10px 12px;
+  padding: 10px var(--space-3);
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: none;
   color: var(--fg);
   font: inherit;
   text-align: left;
-  cursor: pointer;
+}
+
+.wizard-more-menu .btn-destrutivo {
+  color: var(--negativo);
+  text-decoration: none;
+  padding: 10px var(--space-3);
+  font-size: inherit;
+}
+
+.wizard-more-menu button:active {
+  background: var(--surface-pressed);
 }
 
 .wizard-add {
@@ -1214,11 +1357,14 @@ body {
   padding: 2px 0;
   border: 0;
   background: none;
-  color: var(--acao-texto-claro);
+  color: var(--acao-texto);
   font: inherit;
   font-size: 0.95rem;
   font-weight: 500;
-  cursor: pointer;
+}
+
+.wizard-add:active {
+  color: var(--fg);
 }
 
 .wizard-day-sheet-overlay {
@@ -1233,64 +1379,63 @@ body {
 .wizard-day-sheet {
   width: 100%;
   background: var(--surface-card);
-  border-top: 1px solid var(--border);
-  border-radius: 16px 16px 0 0;
-  padding: 16px var(--lado) max(16px, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--divider);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  padding: var(--space-4) var(--lado) max(var(--space-4), env(safe-area-inset-bottom));
 }
 
 .wizard-day-sheet-title {
-  margin: 0 0 12px;
-  font-size: 0.8rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  font-family: var(--mono);
-  color: var(--fg-secundario);
+  margin: 0 0 var(--space-3);
 }
 
 .wizard-day-sheet-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .wizard-day-sheet-grid button {
   min-height: 44px;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--fg);
-  font: inherit;
-  font-variant-numeric: tabular-nums;
-  cursor: pointer;
+}
+
+.wizard-day-sheet-grid button:active:not(.is-selected) {
+  background: var(--surface-pressed);
 }
 
 .wizard-day-sheet-grid button.is-selected {
-  background: var(--acao);
-  color: var(--acao-fg);
+  background: var(--inverso-bg);
+  color: var(--inverso-fg);
+  font-weight: 600;
 }
 
 .wizard-link {
   background: none;
   border: 0;
-  color: var(--fg-secundario);
+  color: var(--fg-muted);
   text-align: left;
   padding: 0;
   font: inherit;
-  cursor: pointer;
   text-decoration: underline;
+  text-underline-offset: 0.3em;
+}
+
+.wizard-link:active {
+  color: var(--fg);
 }
 
 .wizard-running,
 .wizard-actual {
   margin: 0;
-  color: var(--fg-secundario);
+  color: var(--fg-muted);
   font-size: 0.85rem;
 }
 
 .wizard-actual {
   flex: 1 0 100%;
-  color: var(--fg-terciario);
-  font-variant-numeric: tabular-nums;
 }
 
 .wizard-summary {
@@ -1302,12 +1447,13 @@ body {
 .wizard-summary-row {
   display: flex;
   justify-content: space-between;
-  gap: 12px;
-  font-variant-numeric: tabular-nums;
+  gap: var(--space-3);
 }
 
 .wizard-summary-row span:first-child {
-  color: var(--fg-secundario);
+  color: var(--fg-muted);
+  font-family: var(--sans);
+  font-variant-numeric: normal;
 }
 
 
@@ -1331,12 +1477,7 @@ body {
 
 
 .config-secao {
-  font-size: 13px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  font-family: var(--mono);
-  color: var(--fg-terciario);
-  margin: 12px 0 0;
+  margin: var(--space-3) 0 0;
 }
 
 /* Campo de valor das telas que ainda têm um (Acertar saldo, Recorrências).
@@ -1345,14 +1486,12 @@ body {
    (numpad.ts) — quem digita é o numpad logo abaixo, não o teclado. */
 .valor-input {
   width: 100%;
-  font-family: var(--mono);
-  font-variant-numeric: tabular-nums;
   font-size: 34px;
   font-weight: 600;
   text-align: right;
   background: var(--surface-card);
   border: 1px solid var(--border-control);
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   padding: 10px 14px;
   color: var(--fg-hero);
   caret-color: transparent;
@@ -1375,29 +1514,14 @@ body {
   height: 52px;
   font-size: 15px;
   font-weight: 600;
-  border-radius: 12px;
-  border: none;
+  border-radius: var(--radius-lg);
   text-align: center;
-}
-
-.btn-exportar {
-  background: var(--acao);
-  color: var(--acao-fg);
 }
 
 /* Navegação para uma subtela não é ação primária: quatro botões cheios de
    teal na mesma tela tirariam do "Exportar backup" o destaque que a cor
-   existe para dar. */
-.btn-bloco,
-.btn-restaurar {
-  background: var(--surface-card);
-  border: 1px solid var(--border-control);
-  color: var(--fg-secundario-claro);
-}
-
-.btn-exportar:disabled {
-  opacity: 0.6;
-}
+   existe para dar. Cores vêm de .btn-bloco / .btn-exportar no vocabulário
+   compartilhado acima. */
 
 /* The Restaurar button is the visible control; the input itself never shows. */
 .config-file {
@@ -1407,29 +1531,37 @@ body {
 .config-confirmacao:not(:empty) {
   background: var(--surface-card);
   border: 1px solid var(--border-control);
-  border-radius: 12px;
-  padding: 14px;
+  border-radius: var(--radius-lg);
+  padding: var(--space-3);
 }
 
 .config-confirmacao p {
-  margin: 0 0 12px;
+  margin: 0 0 var(--space-3);
   font-size: 13.5px;
   line-height: 1.4;
-  color: var(--fg-secundario-claro);
+  color: var(--fg-muted);
 }
 
 .config-acoes {
   display: flex;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .btn-voltar {
   margin-top: auto;
-  padding: 12px 0;
+  padding: var(--space-3) 0;
   background: none;
   border: none;
   color: var(--fg-muted);
   font-size: 13.5px;
+}
+
+.btn-voltar:active {
+  color: var(--fg);
+}
+
+.btn-desfazer:active {
+  filter: brightness(1.1);
 }
 
 /* Tela Recorrências */
@@ -1445,13 +1577,17 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--space-2);
   padding: 10px 0;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--divider);
 }
 
 .recorrencia-inativa {
-  opacity: 0.55;
+  opacity: var(--inactive-opacity);
+}
+
+.recorrencia-inativa button:disabled {
+  opacity: 1;
 }
 
 .recorrencia-info {
@@ -1473,25 +1609,15 @@ body {
 }
 
 .recorrencia-detalhe {
-  color: var(--fg-secundario);
-  font-size: 12px;
-}
-
-.recorrencia-desativar {
-  background: none;
-  border: none;
   color: var(--fg-muted);
-  font-size: 12.5px;
-  text-decoration: underline;
-  text-underline-offset: 0.3em;
-  padding: 8px 0;
+  font-size: 12px;
 }
 
 .recorrencia-label-input,
 .recorrencia-dia-input {
   width: 100%;
-  padding: 12px;
-  border-radius: 10px;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
   border: 1px solid var(--border-control);
   background: var(--surface-card);
   color: var(--fg);
@@ -1501,8 +1627,6 @@ body {
   display: flex;
   flex-direction: column;
   gap: 5px;
-  color: var(--fg-terciario);
-  font-size: 12px;
 }
 
 /* Tela Linha do tempo (issue #9) */
@@ -1517,13 +1641,8 @@ body {
   position: sticky;
   top: 0;
   background: var(--bg);
-  margin: 14px 0 4px;
-  padding: 4px 0;
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--fg-terciario);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
+  margin: 14px 0 var(--space-1);
+  padding: var(--space-1) 0;
 }
 
 .linha-tempo-dias {
@@ -1536,19 +1655,17 @@ body {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--space-2);
   padding: 6px 0;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--divider);
 }
 
 .linha-tempo-data {
-  color: var(--fg-secundario);
+  color: var(--fg-muted);
   font-size: 12.5px;
 }
 
 .linha-tempo-saldo {
-  font-family: var(--mono);
-  font-variant-numeric: tabular-nums;
   font-size: 14px;
   font-weight: 500;
 }
@@ -1557,5 +1674,5 @@ body {
    real já lançado (regra "real vence projeção", SPEC.md §4). */
 .linha-tempo-projetado .linha-tempo-saldo {
   font-weight: 400;
-  color: var(--fg-secundario);
+  color: var(--fg-muted);
 }

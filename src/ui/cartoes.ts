@@ -88,7 +88,7 @@ function renderItem(app: HTMLDivElement, cartao: Card, status: HTMLElement): HTM
   if (!archived) {
     const arquivarBtn = document.createElement('button');
     arquivarBtn.type = 'button';
-    arquivarBtn.className = 'recorrencia-desativar';
+    arquivarBtn.className = 'btn-destrutivo';
     arquivarBtn.textContent = 'Arquivar';
     arquivarBtn.addEventListener('click', () => {
       void (async () => {

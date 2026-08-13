@@ -106,7 +106,7 @@ function renderItem(app: HTMLDivElement, rec: Recurrence, status: HTMLElement): 
   if (rec.active) {
     const desativarBtn = document.createElement('button');
     desativarBtn.type = 'button';
-    desativarBtn.className = 'recorrencia-desativar';
+    desativarBtn.className = 'btn-destrutivo';
     desativarBtn.textContent = 'Desativar';
     desativarBtn.addEventListener('click', () => {
       void (async () => {

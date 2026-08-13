@@ -419,6 +419,7 @@ function moreMenu(onRemove: () => void): HTMLElement {
 
   const remove = document.createElement('button');
   remove.type = 'button';
+  remove.className = 'btn-destrutivo';
   remove.setAttribute('role', 'menuitem');
   remove.textContent = 'Remover';
   remove.addEventListener('click', (ev) => {
