@@ -6,13 +6,30 @@ import {
   type TimelineDay,
   type TimelineMovement,
 } from '../db/queries.mjs';
-import { formatAmount, formatCents, formatMonthYear } from './format';
+import {
+  formatAmount,
+  formatCents,
+  formatDateSlash,
+  formatMonthAbbrev,
+  formatMonthYear,
+  formatSignedAmount,
+} from './format';
 import { back } from './nav';
+import {
+  HORIZON_RANGES,
+  buildHorizonMonths,
+  daysInMonths,
+  horizonSummary,
+  lowestBalanceDay,
+  monthKey,
+  type HorizonMonth,
+  type HorizonRange,
+  type HorizonSummary,
+} from './previsao-horizon.mjs';
 
 // Previsão (issue #9, SPEC.md §6): "acesso secundário" fora da tela
-// principal — os 12 meses dia a dia, o condensado que substitui rolar as
-// colunas de mês da planilha antiga. Saldos vêm de timeline(); as causas
-// nomeadas, de timeline_movements(), que espelha os mesmos filtros.
+// principal. O horizonte responde "onde o dinheiro vai estar"; a lista
+// diária embaixo explica o porquê — sem virar a planilha de colunas.
 export function renderPrevisao(app: HTMLDivElement): void {
   app.innerHTML = '';
   app.className = 'screen screen-previsao';
@@ -25,6 +42,10 @@ export function renderPrevisao(app: HTMLDivElement): void {
   status.className = 'config-status';
   status.textContent = 'Carregando…';
 
+  const horizonte = document.createElement('section');
+  horizonte.className = 'previsao-horizonte';
+  horizonte.hidden = true;
+
   const list = document.createElement('div');
   list.className = 'previsao-lista';
 
@@ -34,12 +55,12 @@ export function renderPrevisao(app: HTMLDivElement): void {
   voltarBtn.textContent = 'Voltar';
   voltarBtn.addEventListener('click', () => back());
 
-  app.append(title, status, list, voltarBtn);
+  app.append(title, status, horizonte, list, voltarBtn);
 
-  void loadPrevisao(status, list);
+  void loadPrevisao(status, horizonte, list);
 }
 
-async function loadPrevisao(status: HTMLElement, list: HTMLElement): Promise<void> {
+async function loadPrevisao(status: HTMLElement, horizonte: HTMLElement, list: HTMLElement): Promise<void> {
   try {
     const db = await getDb();
     const today = todayBelem();
@@ -49,32 +70,256 @@ async function loadPrevisao(status: HTMLElement, list: HTMLElement): Promise<voi
     ]);
     status.textContent = '';
     status.hidden = true;
-    renderDias(list, dias, movements, today);
+    mountPrevisao(horizonte, list, dias, movements, today);
   } catch (err) {
     status.hidden = false;
     status.textContent = `Falha ao carregar: ${(err as Error).message}`;
   }
 }
 
+function mountPrevisao(
+  horizonte: HTMLElement,
+  list: HTMLElement,
+  dias: TimelineDay[],
+  movements: TimelineMovement[],
+  today: string,
+): void {
+  let range: HorizonRange = 12;
+  let selectedKey: string | null = monthKey(today);
+  let jumping = false;
+  let jumpTimer = 0;
+
+  const render = (): void => {
+    const months = buildHorizonMonths(dias, range);
+    const visiveis = daysInMonths(dias, months);
+    if (selectedKey === null || !months.some((month) => month.key === selectedKey)) {
+      selectedKey = months[0]?.key ?? null;
+    }
+
+    renderHorizonte(horizonte, months, visiveis, today, range, selectedKey, {
+      onRange(next) {
+        range = next;
+        render();
+      },
+      onSelect(key) {
+        selectedKey = key;
+        markSelectedMonth(horizonte, key);
+        jumping = true;
+        window.clearTimeout(jumpTimer);
+        scrollListaToMonth(list, key);
+        scrollHorizonteToMonth(horizonte, key);
+        jumpTimer = window.setTimeout(() => {
+          jumping = false;
+        }, 450);
+      },
+    });
+
+    renderDias(list, visiveis, movements, today);
+    if (selectedKey) {
+      scrollListaToMonth(list, selectedKey, false);
+      scrollHorizonteToMonth(horizonte, selectedKey, false);
+    }
+  };
+
+  list.addEventListener(
+    'scroll',
+    () => {
+      if (jumping) return;
+      const key = monthFromScroll(list);
+      if (key && key !== selectedKey) {
+        selectedKey = key;
+        markSelectedMonth(horizonte, key);
+        scrollHorizonteToMonth(horizonte, key);
+      }
+    },
+    { passive: true },
+  );
+
+  render();
+}
+
+function horizonMonthLabel(firstDay: string, today: string): string {
+  const name = formatMonthAbbrev(firstDay);
+  if (firstDay.slice(0, 4) === today.slice(0, 4)) return name;
+  return `${name} ${firstDay.slice(2, 4)}`;
+}
+
+interface HorizonteHandlers {
+  onRange(range: HorizonRange): void;
+  onSelect(key: string): void;
+}
+
+function renderHorizonte(
+  container: HTMLElement,
+  months: HorizonMonth[],
+  visiveis: TimelineDay[],
+  today: string,
+  range: HorizonRange,
+  selectedKey: string | null,
+  handlers: HorizonteHandlers,
+): void {
+  container.innerHTML = '';
+  if (months.length === 0) {
+    container.hidden = true;
+    return;
+  }
+  container.hidden = false;
+
+  const topo = document.createElement('div');
+  topo.className = 'previsao-horizonte-topo';
+
+  const label = document.createElement('p');
+  label.className = 'previsao-horizonte-label';
+  label.textContent = 'Horizonte';
+
+  const periodos = document.createElement('div');
+  periodos.className = 'previsao-horizonte-periodos';
+  periodos.setAttribute('role', 'group');
+  periodos.setAttribute('aria-label', 'Período');
+
+  for (const monthsCount of HORIZON_RANGES) {
+    if (periodos.childElementCount > 0) {
+      const sep = document.createElement('span');
+      sep.className = 'previsao-horizonte-periodo-sep';
+      sep.textContent = '·';
+      sep.setAttribute('aria-hidden', 'true');
+      periodos.append(sep);
+    }
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'previsao-horizonte-periodo';
+    btn.textContent = `${monthsCount} meses`;
+    btn.setAttribute('aria-pressed', String(monthsCount === range));
+    if (monthsCount === range) btn.classList.add('is-ativo');
+    btn.addEventListener('click', () => {
+      if (monthsCount === range) return;
+      handlers.onRange(monthsCount);
+    });
+    periodos.append(btn);
+  }
+
+  topo.append(label, periodos);
+
+  const faixa = document.createElement('div');
+  faixa.className = 'previsao-horizonte-meses';
+
+  for (const month of months) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'previsao-horizonte-mes';
+    btn.dataset.mes = month.key;
+    if (month.key === selectedKey) btn.classList.add('is-selected');
+    btn.setAttribute('aria-current', month.key === selectedKey ? 'true' : 'false');
+    btn.setAttribute(
+      'aria-label',
+      `${formatMonthYear(month.firstDay)}, ${formatSignedAmount(month.endBalanceCents)}`,
+    );
+
+    const nome = document.createElement('span');
+    nome.className = 'previsao-horizonte-nome';
+    nome.textContent = horizonMonthLabel(month.firstDay, today);
+
+    const valor = document.createElement('span');
+    valor.className = 'previsao-horizonte-valor';
+    valor.textContent = formatSignedAmount(month.endBalanceCents);
+    valor.classList.toggle('valor-negativo', month.endBalanceCents < 0n);
+
+    btn.append(nome, valor);
+    btn.addEventListener('click', () => handlers.onSelect(month.key));
+    faixa.append(btn);
+  }
+
+  container.append(topo, faixa);
+
+  const summary = horizonSummary(visiveis);
+  if (summary) {
+    container.append(renderResumo(summary));
+  }
+}
+
+function renderResumo(summary: HorizonSummary): HTMLElement {
+  const resumo = document.createElement('p');
+  resumo.className = 'previsao-horizonte-resumo';
+
+  const saldoLabel = document.createElement('span');
+  saldoLabel.className = 'previsao-horizonte-resumo-label';
+  saldoLabel.textContent = 'saldo';
+
+  const saldoValor = document.createElement('span');
+  saldoValor.className = 'previsao-horizonte-resumo-valor';
+  saldoValor.textContent = formatAmount(summary.currentBalanceCents);
+  saldoValor.classList.toggle('valor-negativo', summary.currentBalanceCents < 0n);
+
+  const sep = document.createElement('span');
+  sep.className = 'previsao-horizonte-resumo-sep';
+  sep.textContent = '·';
+
+  const menorLabel = document.createElement('span');
+  menorLabel.className = 'previsao-horizonte-resumo-label';
+  menorLabel.textContent = 'menor';
+
+  const menorValor = document.createElement('span');
+  menorValor.className = 'previsao-horizonte-resumo-valor';
+  menorValor.textContent = formatAmount(summary.lowestBalanceCents);
+  menorValor.classList.toggle('valor-negativo', summary.lowestBalanceCents < 0n);
+
+  const menorQuando = document.createElement('span');
+  menorQuando.className = 'previsao-horizonte-resumo-quando';
+  menorQuando.textContent = `em ${formatDateSlash(summary.lowestDay)}`;
+
+  resumo.append(saldoLabel, saldoValor, sep, menorLabel, menorValor, menorQuando);
+  return resumo;
+}
+
+function markSelectedMonth(horizonte: HTMLElement, key: string): void {
+  for (const btn of horizonte.querySelectorAll<HTMLElement>('.previsao-horizonte-mes')) {
+    const selected = btn.dataset.mes === key;
+    btn.classList.toggle('is-selected', selected);
+    btn.setAttribute('aria-current', selected ? 'true' : 'false');
+  }
+}
+
+function scrollBehavior(smooth: boolean): ScrollBehavior {
+  if (!smooth) return 'auto';
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
+}
+
+function scrollHorizonteToMonth(horizonte: HTMLElement, key: string, smooth = true): void {
+  const faixa = horizonte.querySelector<HTMLElement>('.previsao-horizonte-meses');
+  const btn = horizonte.querySelector<HTMLElement>(`.previsao-horizonte-mes[data-mes="${key}"]`);
+  if (!faixa || !btn) return;
+  const left =
+    btn.getBoundingClientRect().left - faixa.getBoundingClientRect().left + faixa.scrollLeft - (faixa.clientWidth - btn.offsetWidth) / 2;
+  faixa.scrollTo({ left: Math.max(0, left), behavior: scrollBehavior(smooth) });
+}
+
+function scrollListaToMonth(list: HTMLElement, key: string, smooth = true): void {
+  const header = list.querySelector<HTMLElement>(`.previsao-mes[data-mes="${key}"]`);
+  if (!header) return;
+  const top = header.getBoundingClientRect().top - list.getBoundingClientRect().top + list.scrollTop;
+  list.scrollTo({ top, behavior: scrollBehavior(smooth) });
+}
+
+function monthFromScroll(list: HTMLElement): string | null {
+  const headers = [...list.querySelectorAll<HTMLElement>('.previsao-mes')];
+  const top = list.getBoundingClientRect().top;
+  let current = headers[0] ?? null;
+  for (const header of headers) {
+    if (header.getBoundingClientRect().top - top <= 12) current = header;
+    else break;
+  }
+  return current?.dataset.mes ?? null;
+}
+
 function movementsByDay(movements: TimelineMovement[]): Map<string, TimelineMovement[]> {
   const map = new Map<string, TimelineMovement[]>();
   for (const movement of movements) {
-    const list = map.get(movement.day) ?? [];
-    list.push(movement);
-    map.set(movement.day, list);
+    const dayList = map.get(movement.day) ?? [];
+    dayList.push(movement);
+    map.set(movement.day, dayList);
   }
   return map;
-}
-
-// Mesmo desempate de worst_point(): menor saldo, dia mais cedo.
-function lowestBalanceDay(dias: TimelineDay[]): string | null {
-  const first = dias[0];
-  if (!first) return null;
-  let best = first;
-  for (const dia of dias) {
-    if (dia.balance_cents < best.balance_cents) best = dia;
-  }
-  return best.day;
 }
 
 function isEventDay(movements: TimelineMovement[]): boolean {
@@ -112,7 +357,7 @@ function renderDias(
   container.innerHTML = '';
 
   const byDay = movementsByDay(movements);
-  const minDay = lowestBalanceDay(dias);
+  const minDay = lowestBalanceDay(dias)?.day ?? null;
   let expanded: HTMLElement | null = null;
 
   let mesAtual = '';
@@ -125,6 +370,7 @@ function renderDias(
 
       const header = document.createElement('p');
       header.className = 'previsao-mes';
+      header.dataset.mes = monthKey(dia.day);
       header.textContent = mes;
 
       mesEl = document.createElement('ul');

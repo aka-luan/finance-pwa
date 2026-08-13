@@ -222,7 +222,10 @@ select {
 .previsao-saldo,
 .previsao-data,
 .previsao-mov-valor,
-.previsao-detalhe-valor {
+.previsao-detalhe-valor,
+.previsao-horizonte-valor,
+.previsao-horizonte-resumo-valor,
+.previsao-horizonte-resumo-quando {
   font-family: var(--mono);
   font-variant-numeric: tabular-nums;
 }
@@ -236,6 +239,8 @@ select {
 .wizard-day-sheet-title,
 .wizard-progress,
 .previsao-mes,
+.previsao-horizonte-label,
+.previsao-horizonte-nome,
 .lancar-data-label,
 .lancar-total-label,
 .recorrencia-dia-label,
@@ -1686,11 +1691,160 @@ select {
   gap: 5px;
 }
 
-/* Tela Previsão (issue #9): ledger dia a dia, sem cards. Título e Voltar
-   ficam pinados; só a lista rola, para o mês sticky funcionar. */
+/* Tela Previsão: horizonte pinado (para onde o saldo vai) e lista diária
+   rolável (por quê). Título, horizonte e Voltar ficam fora do scroller
+   para o mês sticky da lista continuar funcionando. */
 
 .screen-previsao {
   overflow: hidden;
+  gap: var(--space-2);
+}
+
+.screen-previsao .config-title,
+.screen-previsao .btn-voltar {
+  flex-shrink: 0;
+}
+
+.previsao-horizonte {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--divider);
+}
+
+.previsao-horizonte[hidden] {
+  display: none;
+}
+
+.previsao-horizonte-topo {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.previsao-horizonte-periodos {
+  display: flex;
+  align-items: baseline;
+  flex-shrink: 0;
+}
+
+.previsao-horizonte-periodo {
+  margin: 0;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: 0;
+  color: var(--fg-muted);
+  font-family: var(--sans);
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.previsao-horizonte-periodo.is-ativo {
+  color: var(--fg);
+}
+
+.previsao-horizonte-periodo:active {
+  color: var(--fg);
+}
+
+.previsao-horizonte-periodo-sep {
+  color: var(--fg-disabled);
+  font-size: 11px;
+  padding: 0 0.35em;
+}
+
+.previsao-horizonte-meses {
+  display: flex;
+  gap: var(--space-4);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+  touch-action: pan-x;
+}
+
+.previsao-horizonte-meses::-webkit-scrollbar {
+  display: none;
+}
+
+.previsao-horizonte-mes {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  margin: 0;
+  padding: 2px 0 6px;
+  background: none;
+  border: none;
+  border-bottom: 1px solid transparent;
+  border-radius: 0;
+  color: inherit;
+  text-align: left;
+  font: inherit;
+}
+
+.previsao-horizonte-mes.is-selected {
+  border-bottom-color: var(--fg);
+}
+
+.previsao-horizonte-mes.is-selected .previsao-horizonte-nome {
+  color: var(--fg-hero);
+}
+
+.previsao-horizonte-nome {
+  white-space: nowrap;
+}
+
+.previsao-horizonte-mes:active {
+  background: none;
+}
+
+.previsao-horizonte-valor {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  color: var(--fg);
+  white-space: nowrap;
+}
+
+.previsao-horizonte-valor.valor-negativo {
+  color: var(--negativo);
+}
+
+.previsao-horizonte-resumo {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 5px 6px;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.3;
+  color: var(--fg-muted);
+}
+
+.previsao-horizonte-resumo-valor {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--fg);
+}
+
+.previsao-horizonte-resumo-valor.valor-negativo {
+  color: var(--negativo);
+}
+
+.previsao-horizonte-resumo-sep {
+  color: var(--fg-disabled);
+}
+
+.previsao-horizonte-resumo-quando {
+  letter-spacing: 0.02em;
 }
 
 .previsao-lista {

@@ -8,7 +8,7 @@
     "build": "tsc -p tsconfig.json --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "npm run typecheck && npm run test:loop && npm run test:manual-kinds && npm run test:pending && npm run test:backup && npm run test:recurrence && npm run test:marcos && npm run test:card && npm run test:estimate && npm run test:timeline && npm run test:wizard",
+    "test": "npm run typecheck && npm run test:loop && npm run test:manual-kinds && npm run test:pending && npm run test:backup && npm run test:recurrence && npm run test:marcos && npm run test:card && npm run test:estimate && npm run test:timeline && npm run test:horizon && npm run test:wizard",
     "test:smoke": "node pglite-smoke-test.mjs",
     "test:sim": "node pglite-sim-test.mjs",
     "test:loop": "node pglite-loop-test.mjs",
@@ -20,6 +20,7 @@
     "test:card": "node pglite-card-test.mjs",
     "test:estimate": "node pglite-estimate-test.mjs",
     "test:timeline": "node pglite-timeline-test.mjs",
+    "test:horizon": "node previsao-horizon-test.mjs",
     "test:wizard": "node pglite-wizard-test.mjs"
   },
   "dependencies": {
