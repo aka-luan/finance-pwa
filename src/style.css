@@ -570,9 +570,9 @@ select {
   filter: brightness(1.08);
 }
 
-/* Acessos secundários (previsão completa, Planejamento, configurações):
-   empurrados para o rodapé pelo espaçador flexível, com folga à direita
-   para não ficarem sob o FAB, que é fixo. */
+/* Acessos secundários do Termômetro (Previsão, Planejamento,
+   Configurações): empurrados para o rodapé pelo espaçador flexível, com
+   folga à direita para não ficarem sob o FAB, que é fixo. */
 .hoje-secundario {
   margin-top: auto;
   padding-top: var(--space-4);
@@ -1078,8 +1078,8 @@ select {
   opacity: var(--disabled-opacity);
 }
 
-/* Telas secundárias — Acertar saldo, Configurações, Recorrências, Cartões,
-   Previsão. Recolorização apenas: o layout atual continua, com a
+/* Telas secundárias — Acertar saldo, Configurações, Cartões, Previsão,
+   Planejamento. Recolorização apenas: o layout atual continua, com a
    paleta e as fontes novas. O desenho real delas vem de outra rodada
    (docs/design-handoff/design-request-secondary-elements.md). */
 
@@ -1481,7 +1481,7 @@ select {
 .screen-planejamento .config-title,
 .screen-planejamento .wizard-hint,
 .screen-planejamento .lancar-erro,
-.screen-planejamento .btn-voltar {
+.screen-planejamento .forecast-nav {
   flex-shrink: 0;
 }
 
@@ -1496,7 +1496,7 @@ select {
   -webkit-overflow-scrolling: touch;
 }
 
-.screen-planejamento .btn-voltar {
+.screen-planejamento .forecast-nav {
   margin-top: 0;
   padding-top: 8px;
 }
@@ -1636,6 +1636,17 @@ select {
   color: var(--fg);
 }
 
+/* Destinos da previsão nas telas irmãs (Previsão, Planejamento).
+   Mesmos controles discretos do Termômetro, sem a folga do FAB. */
+.forecast-nav {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+  flex-shrink: 0;
+  padding-top: var(--space-2);
+}
+
 .btn-desfazer:active {
   filter: brightness(1.1);
 }
@@ -1706,7 +1717,7 @@ select {
 }
 
 /* Tela Previsão: horizonte pinado (para onde o saldo vai) e lista diária
-   rolável (por quê). Título, horizonte e Voltar ficam fora do scroller
+   rolável (por quê). Título, horizonte e destinos ficam fora do scroller
    para o mês sticky da lista continuar funcionando. */
 
 .screen-previsao {
@@ -1715,7 +1726,9 @@ select {
 }
 
 .screen-previsao .config-title,
-.screen-previsao .btn-voltar {
+.screen-previsao .wizard-hint,
+.screen-previsao .config-status,
+.screen-previsao .forecast-nav {
   flex-shrink: 0;
 }
 

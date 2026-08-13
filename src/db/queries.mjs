@@ -170,9 +170,8 @@ export async function clearEstimateDismissals(db) {
   await db.query('delete from estimate_dismissal');
 }
 
-// Recorrências (issue #5): entrada ou saída num dia fixo do mês. Só
-// target = 'account' aqui — recorrência no cartão alimenta card_bill e é
-// gerenciada em outro lugar, fora do escopo desta tela.
+// Recorrências de conta (target = 'account'): Planejamento é o editor
+// operacional. Recorrência no cartão alimenta card_bill e fica em Cartões.
 export async function listRecurrences(db, today) {
   const { rows } = await db.query(
     `select id, kind, amount_cents, day_of_month, label, start_date, end_date,
