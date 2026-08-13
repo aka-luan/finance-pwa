@@ -151,19 +151,18 @@ export function renderLancar(app: HTMLDivElement, options: LancarOptions = {}): 
   const previewEl = document.createElement('p');
   previewEl.className = 'lancar-consequencia';
 
-  // --- Campos de valor (sem UI própria) ----------------------------------
+  // --- Campo de valor (sem UI própria) -----------------------------------
 
-  // Os dois AmountField ficam fora do DOM de propósito: no design o valor
-  // sendo digitado aparece dentro da tecla "adicionar" (lista) ou na linha
-  // do Total (cartão), não num campo separado. O que se aproveita deles é a
-  // entrada cents-first, que é onde mora a regra (numpad.ts).
+  // O AmountField fica fora do DOM de propósito: no design o valor sendo
+  // digitado aparece dentro da tecla "adicionar" (lista) ou na linha do
+  // Total (cartão), não num campo separado. Um campo só — trocar o tipo não
+  // pode apagar o que já está no teclado.
   const amount = createAmountField('Valor');
-  const cartaoAmount = createAmountField('Valor da compra');
 
   const renderTotal = (): void => {
     const total = isLista(tipo)
       ? items.reduce((sum, item) => sum + item.amountCents, 0n)
-      : cartaoAmount.cents();
+      : amount.cents();
     totalValor.textContent = `R$ ${formatAmount(total)}`;
   };
 
@@ -218,21 +217,19 @@ export function renderLancar(app: HTMLDivElement, options: LancarOptions = {}): 
   // Total. Dois teclados empilhados fariam a tela pular de altura na troca.
   const numpad = createNumpad({
     onDigit: (digit) => {
+      amount.addDigit(digit);
       if (isLista(tipo)) {
-        amount.addDigit(digit);
         numpad.setBuffer(formatAmount(amount.cents()));
       } else {
-        cartaoAmount.addDigit(digit);
         renderTotal();
         void updatePreview();
       }
     },
     onBackspace: () => {
+      amount.backspace();
       if (isLista(tipo)) {
-        amount.backspace();
         numpad.setBuffer(formatAmount(amount.cents()));
       } else {
-        cartaoAmount.backspace();
         renderTotal();
         void updatePreview();
       }
@@ -283,7 +280,7 @@ export function renderLancar(app: HTMLDivElement, options: LancarOptions = {}): 
   const updatePreview = debounce(async (): Promise<void> => {
     const card = cards[cardIdx];
     const installments = PARCELAS[parcelasIdx] as number;
-    const amountCents = cartaoAmount.cents();
+    const amountCents = amount.cents();
 
     if (!card || amountCents <= 0n) {
       previewEl.textContent = '';
@@ -376,23 +373,14 @@ export function renderLancar(app: HTMLDivElement, options: LancarOptions = {}): 
     numpad.element.classList.toggle('numpad-sem-adicionar', !lista);
     errorEl.textContent = '';
     if (lista) previewEl.textContent = '';
-    numpad.setBuffer(formatAmount(lista ? amount.cents() : 0n));
+    numpad.setBuffer(formatAmount(amount.cents()));
     renderTotal();
   };
 
-  // Items são gravados com o `kind` vigente no momento do Salvar (§ acima),
-  // então trocar de pill com itens pendentes classificaria um gasto como
-  // receita ou vice-versa em silêncio. Mais seguro perder o que não foi
-  // salvo do que gravar com o kind errado sem avisar.
+  // O `kind` gravado é o da pill no Salvar, visível. Trocar de tipo no meio
+  // da digitação é o fluxo de "digitei e só depois vi que era Saída" — o
+  // teclado e a lista ainda não salva ficam.
   const selecionarLista = (novoTipo: 'diario' | 'saida' | 'entrada'): void => {
-    // Só limpa ao trocar entre kinds da lista: Cartão nunca toca `items`
-    // (usa cartaoAmount à parte), então ir e voltar por ele não deveria
-    // custar os valores ainda não salvos.
-    if (isLista(tipo) && novoTipo !== tipo) {
-      items.length = 0;
-      amount.clear();
-      renderList();
-    }
     tipo = novoTipo;
     renderTipo();
   };
@@ -403,10 +391,8 @@ export function renderLancar(app: HTMLDivElement, options: LancarOptions = {}): 
   cartaoBtn.addEventListener('click', () => {
     tipo = 'cartao';
     renderTipo();
-    // Voltar para Cartão preserva o valor já digitado (renderTipo não mexe em
-    // cartaoAmount), mas apagou a linha de consequência ao sair — sem
-    // recalcular aqui, a tela mostraria um total parcelado sem dizer em
-    // quantas vezes até a próxima tecla.
+    // Sair de Cartão apaga a linha de consequência (não cabe no modo lista).
+    // Sem recalcular ao voltar, o Total já teria o valor e a preview não.
     void updatePreview();
     void loadCardsOnce();
   });
@@ -473,7 +459,7 @@ export function renderLancar(app: HTMLDivElement, options: LancarOptions = {}): 
   const salvarCartao = async (): Promise<void> => {
     const card = cards[cardIdx];
     const installments = PARCELAS[parcelasIdx] as number;
-    const amountCents = cartaoAmount.cents();
+    const amountCents = amount.cents();
 
     if (!card) {
       errorEl.textContent = 'Nenhum cartão cadastrado.';
