@@ -1,6 +1,20 @@
 /* PROTOTYPE ONLY — styles for ?prototype=wizard. Safe to delete with the
-   prototype modules. Uses product tokens; layout is intentionally distinct
-   per variant. */
+   prototype modules. Uses product tokens (margin, labels, muted, radius,
+   disabled, secondary/destructive); layout stays distinct per variant. */
+
+.proto-section,
+.proto-progress,
+.proto-b-block h2,
+.proto-c-live-kicker,
+.proto-c-saldo > label {
+  font-family: var(--mono);
+  font-size: var(--label-size);
+  font-weight: 400;
+  letter-spacing: var(--label-tracking);
+  text-transform: uppercase;
+  color: var(--fg-muted);
+  margin: 0;
+}
 
 .proto-shell {
   flex: 1;
@@ -14,17 +28,17 @@
   position: sticky;
   top: 0;
   z-index: 5;
-  padding: 8px var(--lado);
+  padding: var(--space-2) var(--lado);
   background: color-mix(in srgb, var(--bg) 92%, transparent);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--divider);
 }
 
 .proto-mode-btn {
   background: var(--surface-pill);
   color: var(--fg-secundario);
   border: 1px solid var(--border-control);
-  border-radius: 999px;
-  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  padding: 6px var(--space-3);
   font-size: 12px;
 }
 
@@ -59,10 +73,7 @@
 }
 
 .proto-progress {
-  font-size: 0.8rem;
-  color: var(--fg-terciario);
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
+  flex-shrink: 0;
 }
 
 .proto-body {
@@ -81,15 +92,15 @@
 
 .proto-btn {
   flex: 1;
-  border-radius: 12px;
-  padding: 14px 16px;
+  border-radius: var(--radius-lg);
+  padding: 14px var(--space-4);
   font-size: 1rem;
   font-weight: 500;
   border: 1px solid transparent;
 }
 
 .proto-btn:disabled {
-  opacity: 0.4;
+  opacity: var(--disabled-opacity);
 }
 
 .proto-btn-primary {
@@ -98,17 +109,25 @@
   border-color: var(--acao-border);
 }
 
+.proto-btn-primary:active:not(:disabled) {
+  filter: brightness(1.08);
+}
+
 .proto-btn-secondary {
-  background: transparent;
-  color: var(--fg-secundario-claro);
+  background: var(--surface-card);
+  color: var(--fg-muted);
   border-color: var(--border-control);
+}
+
+.proto-btn-secondary:active:not(:disabled) {
+  background: var(--surface-pressed);
 }
 
 .proto-linkish {
   align-self: flex-start;
   background: none;
   border: none;
-  color: var(--acao-texto-claro);
+  color: var(--acao-texto);
   padding: 4px 0;
   font-size: 0.95rem;
   text-decoration: underline;
@@ -120,9 +139,9 @@
   align-items: baseline;
   gap: 8px;
   background: var(--surface-card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 12px 14px;
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3);
 }
 
 .proto-money span {
@@ -172,15 +191,15 @@
   width: 4.5rem;
   background: var(--surface-pill);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   color: var(--fg);
-  padding: 10px 12px;
+  padding: 10px var(--space-3);
 }
 
 .proto-cat-name {
   background: var(--surface-pill);
-  border: 1px solid var(--border);
-  border-radius: 10px;
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-md);
   color: var(--fg);
   padding: 10px 12px;
   font-size: 0.95rem;
@@ -197,12 +216,7 @@
 }
 
 .proto-section {
-  margin: 18px 0 8px;
-  font-size: 0.8rem;
-  font-weight: 500;
-  color: var(--fg-terciario);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  margin: 18px 0 var(--space-2);
 }
 
 .proto-fixed .proto-section:first-child {
@@ -214,7 +228,7 @@
   flex-direction: column;
   gap: 4px;
   padding: 10px 0;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--divider);
 }
 
 .proto-compare-name {
@@ -223,7 +237,7 @@
 
 .proto-compare-nums {
   font-size: 0.8rem;
-  color: var(--fg-terciario);
+  color: var(--fg-muted);
   font-family: var(--mono);
   font-variant-numeric: tabular-nums;
 }
@@ -250,9 +264,9 @@
   flex-direction: column;
   gap: 10px;
   background: var(--surface-card);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 16px;
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
 }
 
 .proto-summary-row {
@@ -295,11 +309,6 @@
 
 .proto-b-block h2 {
   margin: 0 0 10px;
-  font-size: 0.8rem;
-  font-weight: 500;
-  color: var(--fg-terciario);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
 }
 
 .proto-b-cat {
@@ -317,8 +326,9 @@
 
 .proto-b-cmp {
   font-size: 0.75rem;
-  color: var(--fg-fraco);
+  color: var(--fg-muted);
   font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
   padding-left: 2px;
 }
 
@@ -329,7 +339,7 @@
   bottom: 56px;
   z-index: 4;
   background: color-mix(in srgb, var(--bg) 94%, transparent);
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--divider);
   padding: 10px var(--lado) calc(10px + env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
@@ -341,9 +351,9 @@
 .proto-b-stats {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+  gap: var(--space-2);
   font-size: 0.75rem;
-  color: var(--fg-terciario);
+  color: var(--fg-muted);
 }
 
 .proto-b-stats strong {
@@ -365,18 +375,11 @@
 .proto-c-rail {
   background: var(--surface-aviso);
   border-right: 1px solid var(--border-aviso);
-  padding: 24px 16px;
+  padding: var(--space-5) var(--lado);
   position: sticky;
   top: 40px;
   align-self: start;
   min-height: calc(100vh - 40px);
-}
-
-.proto-c-live-kicker {
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--fg-terciario);
 }
 
 .proto-c-live-num {
@@ -408,11 +411,6 @@
   gap: 8px;
 }
 
-.proto-c-saldo > label {
-  font-size: 0.8rem;
-  color: var(--fg-terciario);
-}
-
 .proto-c-list {
   display: flex;
   flex-direction: column;
@@ -421,8 +419,8 @@
 
 .proto-c-item {
   background: var(--surface-card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-lg);
   padding: 12px;
   display: flex;
   flex-direction: column;
@@ -432,7 +430,7 @@
 .proto-c-badge {
   font-size: 0.75rem;
   padding: 2px 8px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--surface-pill);
   color: var(--fg-secundario);
   width: fit-content;
@@ -446,16 +444,17 @@
 
 .proto-c-badge.under {
   background: var(--surface-aviso);
-  color: var(--acao-texto-claro);
+  color: var(--acao-texto);
 }
 
 .proto-c-dual {
   display: flex;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--space-2);
   font-size: 0.75rem;
-  color: var(--fg-fraco);
+  color: var(--fg-muted);
   font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
 }
 
 .proto-c-edit {
@@ -493,7 +492,7 @@
   gap: 10px;
   background: #f2f5f6;
   color: #0d0f10;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   padding: 8px 10px;
   box-shadow: 0 8px 24px rgb(0 0 0 / 45%);
   font-size: 12px;
@@ -504,7 +503,7 @@
 .proto-switcher-btn {
   width: 32px;
   height: 32px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   border: none;
   background: #0d0f10;
   color: #f2f5f6;
