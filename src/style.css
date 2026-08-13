@@ -76,7 +76,12 @@
   --radius-md: 10px;
   --radius-lg: 12px;
   --radius-xl: 16px;
+  /* Outer of a 12px-radius control sitting in 12px padding (concentric). */
+  --radius-2xl: 24px;
   --radius-pill: 999px;
+
+  /* iPhone HIG; the app is a phone PWA, so tappable controls use this floor. */
+  --tap: 44px;
 
   --label-size: 11px;
   --label-tracking: 0.08em;
@@ -105,6 +110,8 @@ html {
   height: 100dvh;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 button,
@@ -256,6 +263,27 @@ select {
 .recorrencia-dia-label input {
   text-transform: none;
   letter-spacing: 0;
+}
+
+.wizard-title,
+.acertar-titulo,
+.config-title,
+.lancar-date,
+.hoje-hero-label {
+  text-wrap: balance;
+}
+
+.wizard-hint,
+.acertar-hint,
+.acertar-nota,
+.config-explicacao,
+.estimativa-aviso p,
+.config-confirmacao p,
+.pendentes-texto,
+.lancar-kind-hint,
+.hoje-metrica-label,
+.toast {
+  text-wrap: pretty;
 }
 
 /* Saldo negativo, em qualquer lugar da interface. */
@@ -431,8 +459,9 @@ select {
 .simular {
   background: var(--surface-card);
   border: 1px solid var(--divider);
-  border-radius: var(--radius-lg);
-  padding: var(--space-3);
+  /* 16 = 8 (chip) + 8 (padding) — nested corners stay concentric. */
+  border-radius: var(--radius-xl);
+  padding: var(--space-2);
   margin-bottom: 14px;
 }
 
@@ -508,7 +537,8 @@ select {
   background: var(--surface-card);
   border: 1px solid var(--border-control);
   border-radius: var(--radius-sm);
-  padding: 6px 0;
+  min-height: var(--tap);
+  padding: 0;
   font-size: 12px;
   color: var(--fg-muted);
 }
@@ -562,7 +592,10 @@ select {
   border: none;
   color: var(--acao-texto);
   font-size: 12.5px;
-  padding: var(--space-1) 0;
+  min-height: var(--tap);
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
   text-decoration: underline;
   text-underline-offset: 0.3em;
 }
@@ -592,7 +625,7 @@ select {
   font-size: 13px;
   padding: var(--space-2) var(--space-3);
   margin-left: calc(-1 * var(--space-3));
-  min-height: 40px;
+  min-height: var(--tap);
   border-radius: var(--radius-sm);
   text-align: left;
   text-decoration: none;
@@ -624,9 +657,13 @@ select {
   font-size: 16px;
   font-weight: 600;
   box-shadow: 0 10px 30px rgb(0 0 0 / 55%);
+  transition-property: scale;
+  transition-duration: 150ms;
+  transition-timing-function: ease-out;
 }
 
 .btn-lancar:active {
+  scale: 0.96;
   filter: brightness(0.92);
 }
 
@@ -636,7 +673,8 @@ select {
 .estimativa-aviso:not(:empty) {
   background: var(--surface-card);
   border: 1px solid var(--border-control);
-  border-radius: var(--radius-lg);
+  /* 24 = 12 (ações) + 12 (padding). */
+  border-radius: var(--radius-2xl);
   padding: var(--space-3);
   margin-bottom: var(--space-4);
 }
@@ -656,7 +694,8 @@ select {
   background: var(--surface-pill);
   border: 1px solid var(--border-control);
   border-radius: var(--radius-lg);
-  padding: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  min-height: var(--tap);
   font-size: 13.5px;
   color: var(--fg-muted);
   display: flex;
@@ -679,6 +718,10 @@ select {
   font-size: 13.5px;
   text-decoration: underline;
   text-underline-offset: 0.3em;
+  min-height: var(--tap);
+  min-width: var(--tap);
+  margin: calc(-1 * var(--space-2)) 0;
+  padding: 0 var(--space-2);
 }
 
 /* Tela Lançar */
@@ -775,9 +818,14 @@ select {
   border: 1px solid var(--border-control);
   border-radius: var(--radius-md);
   padding: 8px var(--space-3);
+  min-height: var(--tap);
+  transition-property: scale;
+  transition-duration: 150ms;
+  transition-timing-function: ease-out;
 }
 
 .cartao-picker:active {
+  scale: 0.96;
   background: var(--surface-pressed);
 }
 
@@ -828,7 +876,8 @@ select {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 3px 0;
+  min-height: var(--tap);
+  padding: 0;
 }
 
 .item-numero {
@@ -847,8 +896,9 @@ select {
 
 .item-remover {
   margin-left: 10px;
-  width: 28px;
-  height: 28px;
+  width: var(--tap);
+  height: var(--tap);
+  flex-shrink: 0;
   border-radius: var(--radius-pill);
   background: var(--surface-pill);
   border: 1px solid var(--border-control);
@@ -923,12 +973,13 @@ select {
   border: 1px solid var(--border-control);
   border-radius: var(--radius-md);
   padding: 9px 0;
+  min-height: var(--tap);
   font-size: 13px;
   color: var(--fg-muted);
 }
 
 .screen-lancar .kind-toggle button {
-  min-height: 40px;
+  min-height: var(--tap);
   padding: 7px 0;
   font-size: 12.5px;
 }
@@ -997,6 +1048,7 @@ select {
   font-size: 21px;
   font-weight: 500;
   color: var(--fg);
+  min-height: var(--tap);
 }
 
 .screen-lancar .numpad-key {
@@ -1016,9 +1068,13 @@ select {
   color: var(--inverso-fg);
   font-size: 15px;
   font-weight: 600;
+  transition-property: scale, filter;
+  transition-duration: 150ms;
+  transition-timing-function: ease-out;
 }
 
 .lancar-adicionar:active:not(:disabled) {
+  scale: 0.96;
   filter: brightness(0.92);
 }
 
@@ -1065,6 +1121,9 @@ select {
   border-radius: var(--radius-lg);
   font-size: 15px;
   font-weight: 600;
+  transition-property: scale, filter, background-color;
+  transition-duration: 150ms;
+  transition-timing-function: ease-out;
 }
 
 .btn-secundario,
@@ -1088,12 +1147,14 @@ select {
 .btn-cancelar:active:not(:disabled),
 .btn-bloco:active:not(:disabled),
 .btn-restaurar:active:not(:disabled) {
+  scale: 0.96;
   background: var(--surface-pressed);
 }
 
 .btn-salvar:active:not(:disabled),
 .btn-confirmar:active:not(:disabled),
 .btn-exportar:active:not(:disabled) {
+  scale: 0.96;
   filter: brightness(1.08);
 }
 
@@ -1102,7 +1163,7 @@ select {
 .screen-lancar .tela-footer {
   flex-direction: column;
   align-items: stretch;
-  gap: 2px;
+  gap: var(--space-2);
   padding-top: 4px;
 }
 
@@ -1114,7 +1175,7 @@ select {
 .screen-lancar .btn-nao-gastei {
   flex: none;
   height: auto;
-  min-height: 32px;
+  min-height: var(--tap);
   background: none;
   border: none;
   padding: 2px 0;
@@ -1122,6 +1183,7 @@ select {
   font-size: 12.5px;
   font-weight: 400;
   text-align: center;
+  transition-property: color;
 }
 
 .screen-lancar .btn-nao-gastei:active:not(:disabled) {
@@ -1141,6 +1203,7 @@ select {
   font-size: 12.5px;
   text-decoration: underline;
   text-underline-offset: 0.3em;
+  min-height: var(--tap);
   padding: var(--space-2) 0;
 }
 
@@ -1269,7 +1332,7 @@ select {
   border-radius: var(--radius-md);
   color: var(--fg);
   padding: var(--space-2) 10px;
-  min-height: 44px;
+  min-height: var(--tap);
 }
 
 .wizard-money {
@@ -1280,7 +1343,7 @@ select {
   border: 1px solid var(--divider);
   border-radius: var(--radius-md);
   padding: var(--space-2) 10px;
-  min-height: 44px;
+  min-height: var(--tap);
 }
 
 .wizard-body > .wizard-money {
@@ -1321,8 +1384,9 @@ select {
   row-gap: 0;
   background: var(--surface-card);
   border: 1px solid var(--divider);
-  border-radius: var(--radius-lg);
-  padding: 0 2px 2px var(--space-3);
+  /* 16 = 8 (day chip) + 8 (inset). */
+  border-radius: var(--radius-xl);
+  padding: 0 var(--space-2) var(--space-2) var(--space-3);
 }
 
 .wizard-fixed-card .wizard-name {
@@ -1331,7 +1395,7 @@ select {
   border: 0;
   border-radius: 0;
   padding: 4px 0 0;
-  min-height: 32px;
+  min-height: var(--tap);
   font-weight: 500;
   color: var(--fg-hero);
 }
@@ -1343,7 +1407,7 @@ select {
   border: 0;
   border-radius: 0;
   padding: 0 0 2px;
-  min-height: 36px;
+  min-height: var(--tap);
   gap: 6px;
 }
 
@@ -1368,9 +1432,9 @@ select {
   align-items: center;
   justify-content: center;
   gap: 2px;
-  margin: 0 6px 2px 0;
+  margin: 0;
   padding: 0 10px;
-  min-height: 36px;
+  min-height: var(--tap);
   border: 0;
   border-radius: var(--radius-sm);
   background: var(--surface-pill);
@@ -1400,8 +1464,8 @@ select {
 }
 
 .wizard-more {
-  width: 44px;
-  height: 32px;
+  width: var(--tap);
+  height: var(--tap);
   border: 0;
   background: none;
   color: var(--fg-muted);
@@ -1423,13 +1487,14 @@ select {
   padding: var(--space-1);
   background: var(--surface-card);
   border: 1px solid var(--border-control);
-  border-radius: var(--radius-md);
+  /* 12 = 8 (item) + 4 (padding). */
+  border-radius: var(--radius-lg);
   box-shadow: 0 8px 24px rgb(0 0 0 / 45%);
 }
 
 .wizard-more-menu button {
   width: 100%;
-  min-height: 44px;
+  min-height: var(--tap);
   padding: 10px var(--space-3);
   border: 0;
   border-radius: var(--radius-sm);
@@ -1452,7 +1517,7 @@ select {
 
 .wizard-add {
   align-self: flex-start;
-  min-height: 32px;
+  min-height: var(--tap);
   padding: 2px 0;
   border: 0;
   background: none;
@@ -1479,7 +1544,8 @@ select {
   width: 100%;
   background: var(--surface-card);
   border-top: 1px solid var(--divider);
-  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  /* 24 = 8 (day cell) + 16 (padding). */
+  border-radius: var(--radius-2xl) var(--radius-2xl) 0 0;
   padding: var(--space-4) var(--lado) max(var(--space-4), env(safe-area-inset-bottom));
 }
 
@@ -1494,14 +1560,18 @@ select {
 }
 
 .wizard-day-sheet-grid button {
-  min-height: 44px;
+  min-height: var(--tap);
   border: 0;
   border-radius: var(--radius-sm);
   background: transparent;
   color: var(--fg);
+  transition-property: scale, background-color, color;
+  transition-duration: 150ms;
+  transition-timing-function: ease-out;
 }
 
 .wizard-day-sheet-grid button:active:not(.is-selected) {
+  scale: 0.96;
   background: var(--surface-pressed);
 }
 
@@ -1516,6 +1586,7 @@ select {
   border: 0;
   color: var(--fg-muted);
   text-align: left;
+  min-height: var(--tap);
   padding: 0;
   font: inherit;
   text-decoration: underline;
@@ -1676,6 +1747,9 @@ select {
   font-weight: 600;
   border-radius: var(--radius-lg);
   text-align: center;
+  transition-property: scale, filter, background-color;
+  transition-duration: 150ms;
+  transition-timing-function: ease-out;
 }
 
 /* Navegação para uma subtela não é ação primária: quatro botões cheios de
@@ -1691,7 +1765,8 @@ select {
 .config-confirmacao:not(:empty) {
   background: var(--surface-card);
   border: 1px solid var(--border-control);
-  border-radius: var(--radius-lg);
+  /* 24 = 12 (ações) + 12 (padding). */
+  border-radius: var(--radius-2xl);
   padding: var(--space-3);
 }
 
@@ -1709,6 +1784,7 @@ select {
 
 .btn-voltar {
   margin-top: auto;
+  min-height: var(--tap);
   padding: var(--space-3) 0;
   background: none;
   border: none;
@@ -1766,10 +1842,12 @@ select {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
+  justify-content: center;
   gap: 2px;
   background: none;
   border: none;
   color: var(--fg);
+  min-height: var(--tap);
   padding: 4px 0;
   text-align: left;
 }
@@ -1831,23 +1909,24 @@ select {
 
 .previsao-horizonte-topo {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
 }
 
 .previsao-horizonte-periodos {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   flex-shrink: 0;
 }
 
 .previsao-horizonte-periodo {
   margin: 0;
-  padding: 0;
+  padding: 0 8px;
+  min-height: var(--tap);
   background: none;
   border: none;
-  border-radius: 0;
+  border-radius: var(--radius-sm);
   color: var(--fg-muted);
   font-family: var(--sans);
   font-size: 11px;
@@ -1888,9 +1967,11 @@ select {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
+  justify-content: center;
   gap: 2px;
   margin: 0;
-  padding: 2px 0 6px;
+  padding: var(--space-2) var(--space-1) var(--space-2) 0;
+  min-height: var(--tap);
   background: none;
   border: none;
   border-bottom: 1px solid transparent;
@@ -2049,6 +2130,7 @@ select {
   width: 100%;
   margin: 0;
   padding: 8px 0;
+  min-height: var(--tap);
   background: none;
   border: none;
   color: inherit;
@@ -2196,5 +2278,51 @@ html[data-nav='back']::view-transition-new(root) {
 @keyframes nav-exit-right {
   to {
     transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
+  }
+
+  .btn-lancar,
+  .btn-salvar,
+  .btn-confirmar,
+  .btn-exportar,
+  .btn-secundario,
+  .btn-cancelar,
+  .btn-bloco,
+  .btn-restaurar,
+  .lancar-adicionar,
+  .cartao-picker,
+  .tela-footer button,
+  .config-acoes button,
+  .wizard-day-sheet-grid button {
+    transition-property: none;
+  }
+
+  .proto-btn {
+    transition-property: none;
+  }
+
+  .btn-lancar:active,
+  .btn-salvar:active:not(:disabled),
+  .btn-confirmar:active:not(:disabled),
+  .btn-exportar:active:not(:disabled),
+  .btn-secundario:active:not(:disabled),
+  .btn-cancelar:active:not(:disabled),
+  .btn-bloco:active:not(:disabled),
+  .btn-restaurar:active:not(:disabled),
+  .lancar-adicionar:active:not(:disabled),
+  .cartao-picker:active,
+  .wizard-day-sheet-grid button:active:not(.is-selected) {
+    scale: none;
+  }
+
+  .proto-btn-primary:active:not(:disabled),
+  .proto-btn-secondary:active:not(:disabled) {
+    scale: none;
   }
 }

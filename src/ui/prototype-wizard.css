@@ -38,6 +38,7 @@
   color: var(--fg-secundario);
   border: 1px solid var(--border-control);
   border-radius: var(--radius-pill);
+  min-height: var(--tap);
   padding: 6px var(--space-3);
   font-size: 12px;
 }
@@ -63,6 +64,7 @@
   font-weight: 600;
   color: var(--fg-hero);
   line-height: 1.25;
+  text-wrap: balance;
 }
 
 .proto-hint {
@@ -70,6 +72,7 @@
   color: var(--fg-secundario);
   font-size: 0.95rem;
   line-height: 1.4;
+  text-wrap: pretty;
 }
 
 .proto-progress {
@@ -93,10 +96,14 @@
 .proto-btn {
   flex: 1;
   border-radius: var(--radius-lg);
+  min-height: var(--tap);
   padding: 14px var(--space-4);
   font-size: 1rem;
   font-weight: 500;
   border: 1px solid transparent;
+  transition-property: scale, filter, background-color;
+  transition-duration: 150ms;
+  transition-timing-function: ease-out;
 }
 
 .proto-btn:disabled {
@@ -110,6 +117,7 @@
 }
 
 .proto-btn-primary:active:not(:disabled) {
+  scale: 0.96;
   filter: brightness(1.08);
 }
 
@@ -120,6 +128,7 @@
 }
 
 .proto-btn-secondary:active:not(:disabled) {
+  scale: 0.96;
   background: var(--surface-pressed);
 }
 
@@ -128,6 +137,7 @@
   background: none;
   border: none;
   color: var(--acao-texto);
+  min-height: var(--tap);
   padding: 4px 0;
   font-size: 0.95rem;
   text-decoration: underline;
@@ -142,6 +152,7 @@
   border: 1px solid var(--divider);
   border-radius: var(--radius-lg);
   padding: var(--space-3);
+  min-height: var(--tap);
 }
 
 .proto-money span {
@@ -501,8 +512,8 @@
 }
 
 .proto-switcher-btn {
-  width: 32px;
-  height: 32px;
+  width: var(--tap);
+  height: var(--tap);
   border-radius: var(--radius-pill);
   border: none;
   background: #0d0f10;
