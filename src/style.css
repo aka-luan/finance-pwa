@@ -249,6 +249,7 @@ select {
 .previsao-horizonte-nome,
 .lancar-data-label,
 .lancar-total-label,
+.lancar-buffer-label,
 .recorrencia-dia-label,
 .cartao-picker-label {
   font-family: var(--mono);
@@ -317,6 +318,8 @@ select {
 /* Tela Hoje */
 
 .screen-hoje {
+  display: flex;
+  flex-direction: column;
   /* Folga curta acima do wordmark: o número grande precisa começar alto,
      e 64px deixava um vazio morto entre a barra de status e "TERMÔMETRO". */
   padding-top: max(48px, calc(env(safe-area-inset-top) + 10px));
@@ -410,7 +413,7 @@ select {
   align-items: baseline;
   justify-content: space-between;
   gap: var(--space-3);
-  padding: 7px 0;
+  padding: 5px 0;
   border-top: 1px solid var(--divider);
 }
 
@@ -606,11 +609,11 @@ select {
 }
 
 /* Acessos secundários do Termômetro (Previsão, Planejamento,
-   Configurações): empurrados para o rodapé pelo espaçador flexível, com
-   folga à direita para não ficarem sob o FAB, que é fixo. */
+   Configurações): logo abaixo do conteúdo financeiro, com folga à
+   direita para não ficarem sob o FAB, que é fixo. */
 .hoje-secundario {
-  margin-top: auto;
-  padding-top: var(--space-4);
+  margin-top: var(--space-4);
+  padding-top: var(--space-2);
   padding-right: 130px;
   display: flex;
   flex-direction: column;
@@ -637,7 +640,8 @@ select {
 }
 
 @media (hover: hover) {
-  .btn-config:hover {
+  .btn-config:hover,
+  .config-row:hover {
     background: var(--surface-pill);
     color: var(--fg);
   }
@@ -846,6 +850,7 @@ select {
 
 .lancar-lista-area {
   min-height: 0;
+  max-height: calc(var(--tap) * 3);
   flex: 0 1 auto;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -910,13 +915,6 @@ select {
 
 .item-remover:active {
   background: var(--surface-pressed);
-}
-
-.lancar-vazio {
-  font-size: 12px;
-  color: var(--fg-muted);
-  padding: 4px 0;
-  margin: 0;
 }
 
 .lancar-total-linha {
@@ -995,12 +993,13 @@ select {
   background: var(--surface-pressed);
 }
 
-/* Display do valor em digitação, acima do numpad. Sem a caixa de
-   `.valor-input` das outras telas: aqui o recibo já tem borda, e o
-   buffer precisa parecer a linha viva — não um segundo campo de formulário. */
+/* Display do valor em digitação, acima do numpad. O rótulo distingue
+   o buffer do total já na lista; sem a caixa de `.valor-input`. */
 .lancar-buffer-row {
   display: flex;
-  justify-content: flex-end;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
   padding: 2px 0 4px;
 }
 
@@ -1245,6 +1244,10 @@ select {
   gap: var(--space-3);
 }
 
+.screen-config {
+  gap: var(--space-2);
+}
+
 /* Pin progress/title/footer; only the step body scrolls. Compact rows
    already cut a lot of height, but Fixos still has two lists and the
    footer should stay in reach without scrolling past them. */
@@ -1458,6 +1461,65 @@ select {
   background: var(--surface-pressed);
 }
 
+/* Planejamento: ledger de uma linha — mais premissas por tela, sem
+   o card de duas linhas do wizard. Valor e dia continuam editáveis;
+   ••• fica nas ações secundárias. */
+.screen-planejamento .wizard-fixed-card {
+  grid-template-columns: minmax(0, 1fr) minmax(7rem, auto) auto auto;
+  grid-template-areas: 'name money day more';
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--divider);
+  border-radius: 0;
+  padding: 0;
+  column-gap: 6px;
+}
+
+.screen-planejamento .wizard-fixed-card-noday {
+  grid-template-columns: minmax(0, 1fr) minmax(7rem, auto) auto;
+  grid-template-areas: 'name money more';
+}
+
+.screen-planejamento .wizard-fixed-card .wizard-name {
+  padding: 0;
+  min-height: var(--tap);
+  min-width: 0;
+  font-size: 14px;
+}
+
+.screen-planejamento .wizard-fixed-card .wizard-money {
+  padding: 0;
+  min-height: var(--tap);
+}
+
+.screen-planejamento .wizard-fixed-card .wizard-money input {
+  font-size: 15px;
+}
+
+.screen-planejamento .wizard-fixed-card-noday .wizard-money {
+  padding-right: 0;
+}
+
+.screen-planejamento .wizard-day-btn {
+  padding: 0 8px;
+}
+
+.screen-planejamento .wizard-fixed {
+  gap: 0;
+}
+
+.screen-planejamento .wizard-fixed-list {
+  gap: 0;
+}
+
+.screen-planejamento .wizard-fixed > .wizard-section:not(:first-child) {
+  margin-top: var(--space-3);
+}
+
+.screen-planejamento .wizard-add {
+  margin-top: 2px;
+}
+
 .wizard-more-wrap {
   grid-area: more;
   position: relative;
@@ -1627,7 +1689,7 @@ select {
 }
 
 .screen-planejamento {
-  gap: 10px;
+  gap: 8px;
   height: 100dvh;
   max-height: 100dvh;
   overflow: hidden;
@@ -1643,7 +1705,7 @@ select {
 .planejamento-body {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: var(--space-3);
   flex: 1;
   min-height: 0;
   overflow-y: auto;
@@ -1659,8 +1721,8 @@ select {
 .planejamento-calc {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-top: var(--space-2);
+  gap: 6px;
+  margin-top: var(--space-1);
 }
 
 .planejamento-calc-row {
@@ -1708,7 +1770,49 @@ select {
 
 
 .config-secao {
-  margin: var(--space-3) 0 0;
+  margin: var(--space-2) 0 0;
+}
+
+.config-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  min-height: var(--tap);
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--divider);
+  border-radius: 0;
+  color: var(--fg);
+  text-align: left;
+  font: inherit;
+  font-size: 15px;
+}
+
+.config-row:active {
+  background: var(--surface-pressed);
+}
+
+.config-row-label {
+  min-width: 0;
+}
+
+.config-row-chevron {
+  flex-shrink: 0;
+  color: var(--fg-muted);
+  font-size: 22px;
+  line-height: 1;
+  font-weight: 300;
+}
+
+.config-backup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
 }
 
 /* Campo de valor das telas que ainda têm um (Acertar saldo, Recorrências).
@@ -1730,7 +1834,11 @@ select {
 }
 
 .config-status {
-  min-height: 1.2em;
+  min-height: 0;
+}
+
+.config-status:empty {
+  display: none;
 }
 
 .config-status-erro {
@@ -1790,6 +1898,10 @@ select {
   border: none;
   color: var(--fg-muted);
   font-size: 13.5px;
+}
+
+.screen-config .btn-voltar {
+  margin-top: var(--space-2);
 }
 
 .btn-voltar:active {
@@ -1949,7 +2061,7 @@ select {
 
 .previsao-horizonte-meses {
   display: flex;
-  gap: var(--space-4);
+  gap: var(--space-3);
   overflow-x: auto;
   overscroll-behavior-x: contain;
   -webkit-overflow-scrolling: touch;
@@ -2052,8 +2164,8 @@ select {
   top: 0;
   z-index: 1;
   background: var(--bg);
-  margin: var(--space-4) 0 var(--space-1);
-  padding: var(--space-2) 0 var(--space-1);
+  margin: var(--space-3) 0 2px;
+  padding: var(--space-1) 0;
 }
 
 .previsao-mes:first-child {
@@ -2067,20 +2179,27 @@ select {
 }
 
 .previsao-dia {
-  display: grid;
-  grid-template-columns: 2.75ch 1fr auto;
-  column-gap: var(--space-2);
   border-bottom: 1px solid var(--divider);
 }
 
-.previsao-quieto {
-  min-height: 46px;
+.previsao-dia-linha,
+.previsao-dia-btn {
+  display: grid;
+  grid-template-columns: 2.75ch minmax(0, 1fr) auto;
+  column-gap: var(--space-2);
+  align-items: start;
+  width: 100%;
+}
+
+.previsao-dia-linha {
+  min-height: 32px;
+  padding: 4px 0;
   align-items: center;
-  padding: 0;
 }
 
 .previsao-data {
   grid-column: 1;
+  grid-row: 1;
   color: var(--fg-muted);
   font-size: 12.5px;
   line-height: 1.2;
@@ -2088,6 +2207,7 @@ select {
   flex-direction: column;
   align-items: flex-start;
   gap: 1px;
+  padding-top: 1px;
 }
 
 .previsao-marca {
@@ -2099,12 +2219,22 @@ select {
   white-space: nowrap;
 }
 
+.previsao-causas {
+  grid-column: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
 .previsao-saldo {
   grid-column: 3;
-  font-size: 14px;
+  grid-row: 1;
+  font-size: 13px;
   font-weight: 400;
   color: var(--fg-muted);
   justify-self: end;
+  padding-top: 1px;
 }
 
 .previsao-hoje .previsao-data {
@@ -2123,13 +2253,9 @@ select {
 }
 
 .previsao-dia-btn {
-  display: grid;
-  grid-template-columns: 2.75ch 1fr auto;
-  column-gap: var(--space-2);
-  row-gap: 2px;
-  width: 100%;
+  row-gap: 1px;
   margin: 0;
-  padding: 8px 0;
+  padding: 6px 0;
   min-height: var(--tap);
   background: none;
   border: none;
@@ -2143,17 +2269,9 @@ select {
   background: var(--surface-pressed);
 }
 
-.previsao-evento .previsao-data {
-  grid-column: 1;
-  grid-row: 1;
-  align-self: start;
-  padding-top: 2px;
-}
-
 .previsao-mov {
-  grid-column: 2 / 4;
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   column-gap: var(--space-2);
   min-width: 0;
 }
@@ -2182,11 +2300,9 @@ select {
 }
 
 .previsao-evento .previsao-saldo {
-  grid-column: 3;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--fg);
-  padding-top: 2px;
 }
 
 .previsao-evento.previsao-min .previsao-saldo {
@@ -2198,11 +2314,11 @@ select {
 }
 
 .previsao-detalhe {
-  padding: 0 0 10px;
+  padding: 0 0 8px;
   padding-left: calc(2.75ch + var(--space-2));
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
 }
 
 .previsao-detalhe[hidden] {
