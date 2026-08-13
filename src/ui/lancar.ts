@@ -118,9 +118,6 @@ export function renderLancar(app: HTMLDivElement, options: LancarOptions = {}): 
 
   contexto.append(dataBloco, cartaoPickers);
 
-  const divisor = document.createElement('div');
-  divisor.className = 'lancar-divisor';
-
   // --- Lista de valores --------------------------------------------------
 
   const list = document.createElement('ol');
@@ -133,12 +130,6 @@ export function renderLancar(app: HTMLDivElement, options: LancarOptions = {}): 
   const listaArea = document.createElement('div');
   listaArea.className = 'lancar-lista-area';
   listaArea.append(list, vazioEl);
-
-  // Espaçador à parte, e não `flex: 1` na lista: em Cartão a lista some, e
-  // sem alguém para absorver a sobra o teclado e o rodapé subiriam para o
-  // meio da tela. Com ele, o bloco de baixo fica ancorado nos dois modos.
-  const espacador = document.createElement('div');
-  espacador.className = 'lancar-espacador';
 
   // --- Total -------------------------------------------------------------
 
@@ -154,18 +145,30 @@ export function renderLancar(app: HTMLDivElement, options: LancarOptions = {}): 
 
   totalLinha.append(totalLabel, totalValor);
 
+  // Espaçador depois do recibo (lista + total), não entre eles: em tela
+  // alta a digitação fica na zona do polegar; a lista e o total continuam
+  // juntos embaixo da data. Em Cartão a lista some, e sem alguém para
+  // absorver a sobra o teclado subiria para o meio da tela.
+  const espacador = document.createElement('div');
+  espacador.className = 'lancar-espacador';
+
   // Consequência da compra parcelada, em âmbar como a simulação da Tela
   // Hoje: as duas dizem a mesma coisa — "isto ainda não aconteceu".
   const previewEl = document.createElement('p');
   previewEl.className = 'lancar-consequencia';
 
-  // --- Campo de valor (sem UI própria) -----------------------------------
+  // --- Campo de valor ----------------------------------------------------
 
-  // O AmountField fica fora do DOM de propósito: no modo lista o valor
-  // sendo digitado aparece no botão "Adicionar"; em Cartão, na linha do
-  // Total. Um campo só — trocar o tipo não pode apagar o que já está no
-  // teclado.
+  // Um campo só — trocar o tipo não pode apagar o que já está no teclado.
+  // No modo lista o valor em digitação aparece acima do numpad (display)
+  // e no botão Adicionar; o Total é só o que já entrou na lista. Em Cartão
+  // o display some e o valor vai para a linha do Total.
   const amount = createAmountField('Valor');
+  amount.input.classList.add('lancar-buffer');
+
+  const bufferRow = document.createElement('div');
+  bufferRow.className = 'lancar-buffer-row';
+  bufferRow.append(amount.input);
 
   const renderTotal = (): void => {
     const total = isLista(tipo)
@@ -259,6 +262,7 @@ export function renderLancar(app: HTMLDivElement, options: LancarOptions = {}): 
     salvarBtn.disabled = lista ? !temItens && !temBuffer : !temBuffer;
     naoGasteiBtn.hidden = !lista || temItens || temBuffer;
     naoGasteiBtn.disabled = false;
+    amount.input.classList.toggle('lancar-buffer-vazio', !temBuffer);
   };
 
   // --- Numpad ------------------------------------------------------------
@@ -423,6 +427,8 @@ export function renderLancar(app: HTMLDivElement, options: LancarOptions = {}): 
     dataBloco.hidden = !lista;
     cartaoPickers.hidden = lista;
     listaArea.hidden = !lista;
+    bufferRow.hidden = !lista;
+    previewEl.hidden = lista;
     kindHint.textContent = KIND_HINT[tipo];
     errorEl.textContent = '';
     if (lista) previewEl.textContent = '';
@@ -553,13 +559,13 @@ export function renderLancar(app: HTMLDivElement, options: LancarOptions = {}): 
   app.append(
     topo,
     contexto,
-    divisor,
     listaArea,
-    espacador,
     totalLinha,
     previewEl,
+    espacador,
     tipoToggle,
     kindHint,
+    bufferRow,
     numpad.element,
     adicionarBtn,
     errorEl,
@@ -569,6 +575,7 @@ export function renderLancar(app: HTMLDivElement, options: LancarOptions = {}): 
   renderPickers();
   renderList();
   renderTipo();
+  amount.input.focus();
 
   // Desfazer o dia anterior da fila: apagar os lançamentos deixa aquele
   // dia pendente de novo, então a tela volta para ele.
