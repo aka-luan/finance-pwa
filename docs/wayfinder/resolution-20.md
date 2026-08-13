@@ -33,8 +33,8 @@ fixa deixa de ser só nome+valor: passa a incluir **dia do mês** (1–31).
 
 Motivo: o schema exige `day_of_month`, e a timeline projeta no dia certo.
 Default das sugestões novas = **1**; na recalibração o valor vem da
-recorrência existente. Ajustes fora do wizard continuam na tela
-Recorrências.
+recorrência existente. Ajustes contínuos são o **Planejamento**
+(ADR 0006), não a tela Recorrências.
 
 ## Linhas que não viram recorrência
 
@@ -75,6 +75,9 @@ confirm:
 Identidade é sempre o **uuid**, nunca o label (dois “Freelas” são
 linhas distintas).
 
+O mesmo reconcile roda no Planejamento (`savePlanningAssumptions`),
+sem gravar âncora.
+
 ## O que isto não é
 
 - Não versiona fixos por `effective_from` (diferente de
@@ -85,7 +88,11 @@ linhas distintas).
 - Não preenche `category_id` nos fixos — categoria é vocabulário do
   cotidiano/diário (#17).
 
-## Critérios de aceitação (implementação futura)
+## Critérios de aceitação
+
+Implementados no wizard (`confirmPlanning`) e no Planejamento
+(`savePlanningAssumptions` — sem âncora, sem rollback de tela: o
+autosave é a transação).
 
 - Confirm do primeiro uso com N entradas/saídas > 0 cria exatamente N
   recorrências de conta; zeros não aparecem em `listRecurrences`.

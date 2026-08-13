@@ -21,5 +21,17 @@ Valor diário de referência obtido ao dividir por 30 o orçamento mensal de gas
 _Evitar_: Média de gasto diário, limite diário
 
 **Entrada/saída fixa**:
-Valor que se repete todo mês na conta (salário, aluguel, contas), planejado no wizard e persistido como `recurrence` com `target = 'account'`. Não compõe o orçamento mensal de gastos cotidianos nem a estimativa diária; ver ADR 0005.
+Valor que se repete todo mês na conta (salário, aluguel, contas). No primeiro uso sai do wizard; depois, do **Planejamento**. Persistido como `recurrence` com `target = 'account'`. Não compõe o orçamento mensal de gastos cotidianos nem a estimativa diária; ver ADR 0005.
 _Evitar_: Despesa fixa no diário, recorrência de cartão, custo fixo
+
+**Termômetro**:
+Tela inicial. Fatia acionável da previsão: quanto posso gastar hoje, mais um resumo curto (saldo, marcos, menor saldo) e o "e se eu gastar". No código: `renderHoje`.
+_Evitar_: Tela Hoje como nome de produto, dashboard
+
+**Previsão**:
+Ledger da mesma timeline — horizonte mensal e dia a dia, com as causas nomeadas. Sem simulação.
+_Evitar_: Linha do tempo, extrato
+
+**Planejamento**:
+Editor das premissas que alimentam a previsão (entradas/contas fixas e orçamento mensal de gastos cotidianos). Autosave; não grava âncora de saldo. Recalibrar **é** esta tela, não um segundo wizard.
+_Evitar_: Recorrências (como destino), Recalibrar planejamento (como fluxo separado em Configurações)

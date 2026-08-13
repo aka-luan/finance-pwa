@@ -24,7 +24,7 @@ senão:
 
 `IF NOT EXISTS` é idempotente: boot seguinte não falha. **Não** altera colunas de tabelas velhas; mudança de coluna continua precisando de migração explícita (já dito no cabeçalho de `schema.sql`).
 
-Após o create, composição vazia é o estado honesto: a estimativa vigente permanece; Recalibrar grava a primeira `monthly_budget` (#17). `needsFirstRun` **não** exige composição (#18) — Hoje continua válido.
+Após o create, composição vazia é o estado honesto: a estimativa vigente permanece; o Planejamento grava a primeira `monthly_budget` (#17). `needsFirstRun` **não** exige composição (#18) — o Termômetro continua válido.
 
 ## 2) Backup JSON
 
@@ -47,7 +47,7 @@ Exportar **sempre v2**. Restore v1 → export v2 passa a incluir as chaves de co
 
 ## 3) Não reconstruir o plano
 
-Restore v1 / banco antigo **não** deriva linhas de orçamento a partir de `daily_estimate`. A estimativa é um total diário; a composição é por categoria. Inventar um único bucket mentiria na recalibração. Recalibrar começa com sugestões + realizado dos 30 dias (#16), planejado 0 onde só houver gasto.
+Restore v1 / banco antigo **não** deriva linhas de orçamento a partir de `daily_estimate`. A estimativa é um total diário; a composição é por categoria. Inventar um único bucket mentiria na comparação. O Planejamento começa com a composição vigente, ou vazia (sugestões só no wizard de primeiro uso).
 
 ## 4) Perda silenciosa — o que impede
 
