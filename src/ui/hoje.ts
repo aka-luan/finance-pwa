@@ -30,10 +30,11 @@ import { renderPrevisao } from './previsao';
 import { push, replace } from './nav';
 import { renderUndoToast, type UndoState } from './undo';
 
-// Tela Hoje (SPEC.md §6): saldo em conta, quanto posso gastar hoje, o
-// aviso de dias pendentes, os marcos, o pior momento da janela de 12
-// meses e o campo "e se eu gastar ___" que simula os dois ao vivo, sem
-// gravar nada.
+// Termômetro: a fatia acionável da mesma previsão que Planejamento
+// alimenta e que Previsão mostra por completo. A pergunta da tela é
+// "quanto posso gastar hoje?"; abaixo, um resumo curto do forecast
+// (saldo atual, marcos, menor saldo) e o "e se eu gastar" que o
+// altera ao vivo, sem gravar nada.
 export function renderHoje(app: HTMLDivElement, undo?: UndoState): void {
   app.innerHTML = '';
   app.className = 'screen screen-hoje';
@@ -62,7 +63,7 @@ export function renderHoje(app: HTMLDivElement, undo?: UndoState): void {
 
   const heroLabel = document.createElement('p');
   heroLabel.className = 'hoje-hero-label';
-  heroLabel.textContent = 'Você pode gastar hoje';
+  heroLabel.textContent = 'Quanto posso gastar hoje?';
 
   const heroValor = document.createElement('div');
   heroValor.className = 'hoje-hero-valor';
@@ -78,18 +79,6 @@ export function renderHoje(app: HTMLDivElement, undo?: UndoState): void {
   heroValor.append(heroMoeda, heroNumero);
   hero.append(heroLabel, heroValor);
 
-  const saldoLinha = document.createElement('div');
-  saldoLinha.className = 'saldo-linha';
-
-  const saldoLabel = document.createElement('span');
-  saldoLabel.className = 'saldo-label';
-  saldoLabel.textContent = 'Saldo em conta';
-
-  const saldoValor = document.createElement('span');
-  saldoValor.className = 'saldo-valor';
-
-  saldoLinha.append(saldoLabel, saldoValor);
-
   const estimativaEl = document.createElement('div');
   estimativaEl.className = 'estimativa-aviso';
 
@@ -99,25 +88,31 @@ export function renderHoje(app: HTMLDivElement, undo?: UndoState): void {
   lancarBtn.textContent = 'Lançar';
   lancarBtn.addEventListener('click', () => push(renderLancar));
 
-  const marcosEl = document.createElement('section');
-  marcosEl.className = 'marcos';
-
-  const piorEl = document.createElement('section');
-  piorEl.className = 'pior-momento';
+  // Resumo da previsão + simulador: o "e se eu gastar" fica acima das
+  // métricas para a relação ser óbvia — o valor digitado é a pergunta,
+  // as linhas abaixo são a resposta, no mesmo motor de Previsão.
+  const previsaoEl = document.createElement('section');
+  previsaoEl.className = 'hoje-previsao';
 
   const simularEl = buildSimularField();
+
+  const metricasEl = document.createElement('div');
+  metricasEl.className = 'hoje-metricas';
+  metricasEl.setAttribute('aria-live', 'polite');
+
+  previsaoEl.append(simularEl.container, metricasEl);
 
   const pendentesEl = document.createElement('div');
   pendentesEl.className = 'pendentes';
 
-  // "Acesso secundário" (SPEC.md §6): a Previsão dos 12 meses, fora da
-  // tela principal — mesmo tratamento discreto do botão de Configurações,
-  // para não competir com saldo/marcos/simulação. Sem sublinhado de link:
-  // a área de toque é que marca o controle, não a decoração do texto.
+  // Termômetro responde o hoje; Previsão responde o que vem depois.
+  // Mesmo tratamento discreto do botão de Configurações, para não
+  // competir com o número. Sem sublinhado de link: a área de toque é
+  // que marca o controle, não a decoração do texto.
   const previsaoBtn = document.createElement('button');
   previsaoBtn.type = 'button';
   previsaoBtn.className = 'btn-config';
-  previsaoBtn.textContent = 'Previsão';
+  previsaoBtn.textContent = 'Ver previsão completa';
   previsaoBtn.addEventListener('click', () => push(renderPrevisao));
 
   const planejamentoBtn = document.createElement('button');
@@ -142,10 +137,7 @@ export function renderHoje(app: HTMLDivElement, undo?: UndoState): void {
   app.append(
     topo,
     hero,
-    saldoLinha,
-    marcosEl,
-    piorEl,
-    simularEl.container,
+    previsaoEl,
     estimativaEl,
     pendentesEl,
     secundario,
@@ -159,11 +151,9 @@ export function renderHoje(app: HTMLDivElement, undo?: UndoState): void {
   void loadHoje(hoje, {
     heroValor,
     heroNumero,
-    saldoValor,
+    metricasEl,
     estimativaEl,
     pendentesEl,
-    marcosEl,
-    piorEl,
     simularEl,
   });
 }
@@ -178,8 +168,8 @@ interface SimularField {
 // Entrada de dígitos "cents-first" como em createAmountField (numpad.ts),
 // mas com teclado nativo em vez do numpad próprio: o campo é para
 // digitação ao vivo com debounce, não para o fluxo de confirmação de
-// Lançar. Cada tecla dispara um recálculo debounced de marcos/pior
-// momento (SPEC.md §6).
+// Lançar. Cada tecla dispara um recálculo debounced das métricas da
+// previsão (marcos + menor saldo + saldo atual). Nada é gravado.
 const SIMULAR_MAX_DIGITS = 8; // same cap as createAmountField (numpad.ts) — up to R$ 999.999,99
 
 // Atalhos para os valores que se simula de verdade — uma conta grande, uma
@@ -212,10 +202,10 @@ function buildSimularField(): SimularField {
   input.inputMode = 'numeric';
   input.className = 'simular-input';
   input.placeholder = '0,00';
-  // Off until loadHoje has marcos/pior momento in hand — typing before that
-  // would drop keystrokes silently (the listener isn't wired up yet) and
-  // still show raw digits in the box, since formatting lives in the same
-  // listener.
+  // Off until loadHoje has as métricas da previsão em mão — typing before
+  // that would drop keystrokes silently (the listener isn't wired up yet)
+  // and still show raw digits in the box, since formatting lives in the
+  // same listener.
   input.disabled = true;
 
   campo.append(moeda, input);
@@ -229,11 +219,12 @@ function buildSimularField(): SimularField {
   let digits = '';
   const chips: { botao: HTMLButtonElement; cents: bigint | null }[] = [];
 
-  // A borda do card acende junto com o valor: é o único aviso de que os
-  // marcos abaixo já não são o saldo real, e sim uma hipótese.
+  // A borda do card acende junto com o valor: é o único aviso de que as
+  // métricas abaixo já não são o saldo real, e sim uma hipótese.
   const render = (): void => {
     input.value = digits === '' ? '' : formatAmount(BigInt(digits));
     container.classList.toggle('simular-ativo', digits !== '');
+    container.parentElement?.classList.toggle('hoje-previsao-sim', digits !== '');
     for (const chip of chips) {
       // "limpar" nunca acende: em repouso não há simulação nenhuma para
       // destacar, e um chip aceso diria o contrário.
@@ -291,11 +282,9 @@ function buildSimularField(): SimularField {
 interface HojeElements {
   heroValor: HTMLElement;
   heroNumero: HTMLElement;
-  saldoValor: HTMLElement;
+  metricasEl: HTMLElement;
   estimativaEl: HTMLElement;
   pendentesEl: HTMLElement;
-  marcosEl: HTMLElement;
-  piorEl: HTMLElement;
   simularEl: SimularField;
 }
 
@@ -316,19 +305,25 @@ async function loadHoje(today: string, els: HojeElements): Promise<void> {
       els.heroNumero.classList.toggle('valor-negativo', podeGastarCents < 0n);
     }
 
-    els.saldoValor.textContent = `R$ ${formatAmount(saldoCents)}`;
-    els.saldoValor.classList.toggle('valor-negativo', saldoCents < 0n);
+    renderForecastMetrics(els.metricasEl, {
+      saldoCents,
+      marcos: [],
+      pior: null,
+      baselineSaldo: saldoCents,
+      baselineMarcos: [],
+      baselinePior: null,
+      simulating: false,
+    });
 
     if (pendentes.length > 0) {
       renderPendentes(els.pendentesEl, pendentes);
     }
 
     await loadEstimateDeviation(db, today, els.estimativaEl);
-    await loadMarcos(db, today, els.marcosEl, els.piorEl, els.simularEl);
+    await loadMarcos(db, today, saldoCents, els.metricasEl, els.simularEl);
   } catch (err) {
     els.heroValor.classList.add('hoje-hero-sem-valor');
     els.heroNumero.textContent = `Falha ao carregar o saldo: ${(err as Error).message}`;
-    els.saldoValor.textContent = '';
     throw err;
   }
 }
@@ -412,14 +407,14 @@ function renderEstimativaAviso(
 async function loadMarcos(
   db: PGlite,
   today: string,
-  marcosEl: HTMLElement,
-  piorEl: HTMLElement,
+  saldoCents: bigint,
+  metricasEl: HTMLElement,
   simularEl: SimularField,
 ): Promise<void> {
   try {
     const [marcos, pior] = await Promise.all([getMarcos(db, today), getWorstPoint(db, today)]);
-    renderMarcos(marcosEl, marcos, marcos, false);
-    renderPiorMomento(piorEl, pior, pior, false);
+    const baseline = { saldoCents, marcos, pior: pior ?? null };
+    paintForecast(metricasEl, baseline, null);
 
     // Guards against a stale response overwriting a fresher one when two
     // debounced calls overlap (the DB round trip time isn't guaranteed to
@@ -430,8 +425,7 @@ async function loadMarcos(
       const thisRequest = ++requestId;
 
       if (whatIfCents === null) {
-        renderMarcos(marcosEl, marcos, marcos, false);
-        renderPiorMomento(piorEl, pior, pior, false);
+        paintForecast(metricasEl, baseline, null);
         return;
       }
 
@@ -442,16 +436,44 @@ async function loadMarcos(
       ]);
 
       if (thisRequest !== requestId) return;
-      renderMarcos(marcosEl, simMarcos, marcos, true);
-      renderPiorMomento(piorEl, simPior, pior, true);
+      paintForecast(
+        metricasEl,
+        { saldoCents: saldoCents - whatIfCents, marcos: simMarcos, pior: simPior ?? null },
+        baseline,
+      );
     }, 150);
 
     simularEl.input.disabled = false;
     simularEl.onChange(simular);
   } catch (err) {
-    marcosEl.textContent = `Falha ao carregar marcos: ${(err as Error).message}`;
-    piorEl.textContent = '';
+    paintForecast(metricasEl, { saldoCents, marcos: [], pior: null }, null);
+    const erro = document.createElement('p');
+    erro.className = 'hoje-metricas-erro';
+    erro.textContent = `Falha ao carregar a previsão: ${(err as Error).message}`;
+    metricasEl.append(erro);
   }
+}
+
+type ForecastSnapshot = {
+  saldoCents: bigint;
+  marcos: Milestone[];
+  pior: WorstPoint | null;
+};
+
+function paintForecast(
+  container: HTMLElement,
+  current: ForecastSnapshot,
+  baseline: ForecastSnapshot | null,
+): void {
+  renderForecastMetrics(container, {
+    saldoCents: current.saldoCents,
+    marcos: current.marcos,
+    pior: current.pior,
+    baselineSaldo: baseline?.saldoCents ?? current.saldoCents,
+    baselineMarcos: baseline?.marcos ?? current.marcos,
+    baselinePior: baseline?.pior ?? current.pior,
+    simulating: baseline !== null,
+  });
 }
 
 // A função SQL `milestones()` rotula o primeiro marco de "fim do mês"; a
@@ -461,90 +483,93 @@ const MARCO_LABELS: Record<string, string> = {
   'fim do mês': 'fim deste mês',
 };
 
-// Marcos: fim do mês, +3, +6, +12 meses, cada um com o saldo projetado e,
-// enquanto o campo "e se eu gastar ___" tem valor, o delta contra o saldo
-// sem simulação (SPEC.md §6). Quatro colunas de largura igual — lado a
-// lado é o que deixa a curva do ano visível de relance.
-function renderMarcos(
-  container: HTMLElement,
-  marcos: Milestone[],
-  baseline: Milestone[],
-  simulating: boolean,
-): void {
+interface ForecastMetrics {
+  saldoCents: bigint;
+  marcos: Milestone[];
+  pior: WorstPoint | null;
+  baselineSaldo: bigint;
+  baselineMarcos: Milestone[];
+  baselinePior: WorstPoint | null;
+  simulating: boolean;
+}
+
+// Poucas linhas, todas do mesmo motor (balance_on / milestones /
+// worst_point → timeline). Não é dashboard: label à esquerda, valor à
+// direita, delta em âmbar só enquanto o "e se eu gastar" tem valor.
+function renderForecastMetrics(container: HTMLElement, metrics: ForecastMetrics): void {
   container.innerHTML = '';
 
-  for (const marco of marcos) {
-    const item = document.createElement('div');
-    item.className = 'marco';
+  appendMetrica(container, {
+    label: 'saldo atual',
+    amount: metrics.saldoCents,
+    baseline: metrics.baselineSaldo,
+    simulating: metrics.simulating,
+  });
 
-    const label = document.createElement('div');
-    label.className = 'marco-label';
-    label.textContent = MARCO_LABELS[marco.label] ?? marco.label;
+  for (const marco of metrics.marcos) {
+    const base = metrics.baselineMarcos.find((b) => b.label === marco.label);
+    appendMetrica(container, {
+      label: MARCO_LABELS[marco.label] ?? marco.label,
+      amount: marco.balance_cents,
+      baseline: base?.balance_cents ?? marco.balance_cents,
+      simulating: metrics.simulating,
+    });
+  }
 
-    const valor = document.createElement('div');
-    valor.className = 'marco-valor';
-    valor.textContent = formatAmount(marco.balance_cents);
-    valor.classList.toggle('valor-negativo', marco.balance_cents < 0n);
-
-    const data = document.createElement('div');
-    data.className = 'marco-data';
-    data.textContent = formatDateSlash(marco.day);
-
-    // Número e data colados: o olho lê "−25,55 em 31/ago" como um bloco,
-    // com o período (label) só como legenda acima. O delta fica fora desse
-    // bloco — e some quando não há simulação, senão a linha vazia separava
-    // o valor da data e as quatro colunas pareciam três fatos soltos.
-    const leitura = document.createElement('div');
-    leitura.className = 'marco-leitura';
-    leitura.append(valor, data);
-
-    const delta = document.createElement('div');
-    delta.className = 'marco-delta';
-    if (simulating) {
-      const base = baseline.find((b) => b.label === marco.label);
-      const diff = base ? marco.balance_cents - base.balance_cents : 0n;
-      delta.textContent = `${diff > 0n ? '+' : ''}${formatAmount(diff)}`;
-    }
-
-    item.append(label, leitura, delta);
-    container.append(item);
+  if (metrics.pior) {
+    appendMetrica(container, {
+      label: 'menor saldo',
+      amount: metrics.pior.balance_cents,
+      baseline: metrics.baselinePior?.balance_cents ?? metrics.pior.balance_cents,
+      when: metrics.pior.day,
+      simulating: metrics.simulating,
+    });
   }
 }
 
-// Pior momento: menor saldo da janela de 12 meses e o dia em que ocorre.
-// Simulando, mostra entre parênteses o valor de antes — o que interessa
-// aqui é "quanto isso piora o fundo do poço", não o delta isolado.
-function renderPiorMomento(
+function appendMetrica(
   container: HTMLElement,
-  pior: WorstPoint,
-  baseline: WorstPoint,
-  simulating: boolean,
+  row: {
+    label: string;
+    amount: bigint;
+    baseline: bigint;
+    simulating: boolean;
+    when?: string;
+  },
 ): void {
-  container.innerHTML = '';
+  const item = document.createElement('div');
+  item.className = 'hoje-metrica';
 
   const label = document.createElement('span');
-  label.className = 'pior-label';
-  label.textContent = 'menor saldo:';
+  label.className = 'hoje-metrica-label';
+  label.textContent = row.label;
+
+  const leitura = document.createElement('span');
+  leitura.className = 'hoje-metrica-leitura';
+
+  if (row.simulating) {
+    const diff = row.amount - row.baseline;
+    const delta = document.createElement('span');
+    delta.className = 'hoje-metrica-delta';
+    delta.textContent = `${diff > 0n ? '+' : ''}${formatAmount(diff)}`;
+    leitura.append(delta);
+  }
 
   const valor = document.createElement('span');
-  valor.className = 'pior-valor';
-  // Sem "R$" aqui: a linha é uma frase corrida ("menor saldo: X em 11/nov"),
-  // não uma coluna de valores como o hero e o saldo em conta.
-  valor.textContent = formatAmount(pior.balance_cents);
-  valor.classList.toggle('valor-negativo', pior.balance_cents < 0n);
+  valor.className = 'hoje-metrica-valor';
+  valor.textContent = formatAmount(row.amount);
+  valor.classList.toggle('valor-negativo', row.amount < 0n);
+  leitura.append(valor);
 
-  const data = document.createElement('span');
-  data.className = 'pior-data';
-  data.textContent = `em ${formatDateSlash(pior.day)}`;
-
-  container.append(label, valor, data);
-
-  if (simulating) {
-    const era = document.createElement('span');
-    era.className = 'pior-era';
-    era.textContent = `(era ${formatAmount(baseline.balance_cents)})`;
-    container.append(era);
+  if (row.when) {
+    const quando = document.createElement('span');
+    quando.className = 'hoje-metrica-quando';
+    quando.textContent = `em ${formatDateSlash(row.when)}`;
+    leitura.append(quando);
   }
+
+  item.append(label, leitura);
+  container.append(item);
 }
 
 // "Aviso de dias pendentes: discreto, tocável, leva ao modo de
