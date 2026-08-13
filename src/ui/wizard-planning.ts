@@ -27,6 +27,7 @@ import {
   moneyInput,
   newFixedRow,
   sectionLabel,
+  withPreservedScroll,
 } from './planning-rows';
 import {
   type FixedRow,
@@ -149,6 +150,7 @@ async function loadRecalibrateState(
 }
 
 function paint(app: HTMLDivElement, state: WizardState): void {
+  withPreservedScroll(app, '.wizard-body', () => {
   app.innerHTML = '';
   app.className = 'screen screen-wizard';
 
@@ -234,6 +236,7 @@ function paint(app: HTMLDivElement, state: WizardState): void {
   }
 
   app.append(progress, title, body, errorEl, footer);
+  });
 }
 
 async function save(

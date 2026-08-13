@@ -20,6 +20,7 @@ import {
   fixedRowList,
   newFixedRow,
   sectionLabel,
+  withPreservedScroll,
 } from './planning-rows';
 import { type FixedRow, dailyEstimateFromTotal } from './wizard-planning-state';
 
@@ -93,6 +94,7 @@ async function loadState(
 }
 
 function paint(app: HTMLDivElement, state: PlanejamentoState): void {
+  withPreservedScroll(app, '.planejamento-body', () => {
   app.innerHTML = '';
   app.className = 'screen screen-planejamento';
 
@@ -155,6 +157,7 @@ function paint(app: HTMLDivElement, state: PlanejamentoState): void {
   errorEl.textContent = state.error;
 
   app.append(title, hint, body, errorEl, renderForecastNav('planejamento'));
+  });
 }
 
 function calcFooter(state: PlanejamentoState): HTMLElement {
